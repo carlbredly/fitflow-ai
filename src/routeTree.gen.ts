@@ -9,9 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WorkoutRouteImport } from './routes/workout'
 import { Route as NutritionRouteImport } from './routes/nutrition'
 import { Route as IndexRouteImport } from './routes/index'
 
+const WorkoutRoute = WorkoutRouteImport.update({
+  id: '/workout',
+  path: '/workout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NutritionRoute = NutritionRouteImport.update({
   id: '/nutrition',
   path: '/nutrition',
@@ -26,31 +32,42 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/nutrition': typeof NutritionRoute
+  '/workout': typeof WorkoutRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/nutrition': typeof NutritionRoute
+  '/workout': typeof WorkoutRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/nutrition': typeof NutritionRoute
+  '/workout': typeof WorkoutRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/nutrition'
+  fullPaths: '/' | '/nutrition' | '/workout'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/nutrition'
-  id: '__root__' | '/' | '/nutrition'
+  to: '/' | '/nutrition' | '/workout'
+  id: '__root__' | '/' | '/nutrition' | '/workout'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   NutritionRoute: typeof NutritionRoute
+  WorkoutRoute: typeof WorkoutRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/workout': {
+      id: '/workout'
+      path: '/workout'
+      fullPath: '/workout'
+      preLoaderRoute: typeof WorkoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/nutrition': {
       id: '/nutrition'
       path: '/nutrition'
@@ -71,6 +88,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   NutritionRoute: NutritionRoute,
+  WorkoutRoute: WorkoutRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
