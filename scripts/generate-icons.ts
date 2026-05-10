@@ -1,5 +1,5 @@
 import sharp from "sharp";
-import { writeFileSync } from "fs";
+import { writeFileSync, mkdirSync, existsSync } from "fs";
 
 const SIZE = 180;
 
@@ -17,5 +17,8 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SIZE} ${SIZE
 
 const png = await sharp(Buffer.from(svg)).resize(SIZE, SIZE).png().toBuffer();
 writeFileSync("public/icon-180.png", png);
-writeFileSync("dist/client/icon-180.png", png);
+
+const distClient = "dist/client";
+if (!existsSync(distClient)) mkdirSync(distClient, { recursive: true });
+writeFileSync(`${distClient}/icon-180.png`, png);
 console.log("✓ iOS icon generated: icon-180.png");
