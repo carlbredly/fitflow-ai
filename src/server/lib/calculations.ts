@@ -1,0 +1,38 @@
+export type Goal = "gain" | "loss" | "maintain";
+export type Mode = "normal" | "strict" | "extreme";
+export type Sex = "m" | "f";
+
+export function calculateBMR(w: number, h: number, a: number, sex: Sex): number {
+  return sex === "m" ? 10 * w + 6.25 * h - 5 * a + 5 : 10 * w + 6.25 * h - 5 * a - 161;
+}
+export function calculateTDEE(bmr: number, al: number): number { return Math.round(bmr * al); }
+export function getActivityMultiplier(g: Goal, m: Mode): number {
+  const base: Record<Goal, number> = { gain: 1.55, loss: 1.375, maintain: 1.55 };
+  const adj: Record<Mode, number> = { normal: 0, strict: 0.05, extreme: 0.1 };
+  return base[g] + adj[m];
+}
+export interface MacroTargets { kcal: number; protein: number; carbs: number; fat: number; }
+export function calculateMacros(tdee: number, g: Goal, m: Mode, w: number): MacroTargets {
+  const s: Record<string, number> = {
+    gain_normal: 200, gain_strict: 300, gain_extreme: 500,
+    loss_normal: -300, loss_strict: -400, loss_extreme: -500,
+    maintain_normal: 0, maintain_strict: 0, maintain_extreme: 0,
+  };
+  const pm: Record<Mode, number> = { normal: 1.6, strict: 1.8, extreme: 2.2 };
+  const tk = tdee + (s[`${g}_${m}`] ?? 0);
+  const tp = Math.round(pm[m] * w);
+  const fat = Math.round(w * 0.8);
+  const carbs = Math.max(0, Math.round((tk - tp * 4 - fat * 9) / 4));
+  return { kcal: tk, protein: tp, carbs, fat };
+}
+export function calculateAll(w: number, h: number, a: number, s: Sex, g: Goal, m: Mode): MacroTargets {
+  return calculateMacros(calculateTDEE(calculateBMR(w, h, a, s), getActivityMultiplier(g, m)), g, m, w);
+}
+export function calculateWeeklyChange(g: Goal, m: Mode): number {
+  const r: Record<string, number> = {
+    gain_normal: 0.25, gain_strict: 0.5, gain_extreme: 1,
+    loss_normal: -0.25, loss_strict: -0.5, loss_extreme: -1,
+    maintain_normal: 0, maintain_strict: 0, maintain_extreme: 0,
+  };
+  return r[`${g}_${m}`] ?? 0;
+}
