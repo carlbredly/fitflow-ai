@@ -24,17 +24,17 @@ function Onboarding() {
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState<OnboardingData>({
-    name: "Alex",
+    name: "",
     sex: "m",
-    age: 28,
-    weight: 78.4,
-    height: 180,
-    goalWeight: 82,
-    dietConstraints: ["Aucune"],
+    age: 0,
+    weight: 0,
+    height: 0,
+    goalWeight: 0,
+    dietConstraints: [],
     goal: "gain",
-    mode: "strict",
-    weeks: 6,
-    equipment: ["gym"],
+    mode: "normal",
+    weeks: 4,
+    equipment: [],
   });
 
   const update = <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) =>
@@ -146,6 +146,7 @@ function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
 function Step1({ form, update }: { form: OnboardingData; update: (k: keyof OnboardingData, v: any) => void }) {
   const tags = ["Aucune", "Végétarien", "Vegan", "Sans gluten", "Sans lactose", "Halal", "Allergie noix"];
   const toggle = (t: string) => {
+    if (t === "Aucune") { update("dietConstraints", ["Aucune"]); return; }
     const picked = form.dietConstraints.includes(t)
       ? form.dietConstraints.filter((x) => x !== t)
       : [...form.dietConstraints.filter((d) => d !== "Aucune"), t];
@@ -174,10 +175,10 @@ function Step1({ form, update }: { form: OnboardingData; update: (k: keyof Onboa
           </div>
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Âge"><Input type="number" value={form.age} onChange={(e) => update("age", +e.target.value)} /></Field>
-          <Field label="Taille (cm)"><Input type="number" value={form.height} onChange={(e) => update("height", +e.target.value)} /></Field>
-          <Field label="Poids actuel (kg)"><Input type="number" value={form.weight} onChange={(e) => update("weight", +e.target.value)} step={0.1} /></Field>
-          <Field label="Poids objectif (kg)"><Input type="number" value={form.goalWeight} onChange={(e) => update("goalWeight", +e.target.value)} step={0.1} /></Field>
+          <Field label="Âge"><Input type="number" placeholder="28" value={form.age || ""} onChange={(e) => update("age", +e.target.value)} /></Field>
+          <Field label="Taille (cm)"><Input type="number" placeholder="180" value={form.height || ""} onChange={(e) => update("height", +e.target.value)} /></Field>
+          <Field label="Poids actuel (kg)"><Input type="number" placeholder="78" step={0.1} value={form.weight || ""} onChange={(e) => update("weight", +e.target.value)} /></Field>
+          <Field label="Poids objectif (kg)"><Input type="number" placeholder="82" step={0.1} value={form.goalWeight || ""} onChange={(e) => update("goalWeight", +e.target.value)} /></Field>
         </div>
         <Field label="Régimes & allergies">
           <div className="-mx-4 overflow-x-auto no-scrollbar px-4">
