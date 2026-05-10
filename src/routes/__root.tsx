@@ -52,12 +52,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { name: "theme-color", content: "#0D0D0D" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      { name: "theme-color", content: "#00E5A0" },
+      { name: "description", content: "Coach fitness & nutrition IA personnalisé" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "FitAI" },
       { title: "FitAI Coach" },
     ],
     links: [
+      { rel: "manifest", href: "/manifest.json" },
       { rel: "icon", href: FAVICON },
+      { rel: "apple-touch-icon", href: "/icon-192.svg" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" },
@@ -74,7 +80,15 @@ function RootShell({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
       <head><HeadContent /></head>
-      <body>{children}<Scripts /></body>
+      <body>
+        {children}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}`,
+          }}
+        />
+        <Scripts />
+      </body>
     </html>
   );
 }
