@@ -16,5 +16,21 @@ export default defineConfig({
   build: {
     outDir: "dist/client",
     sourcemap: false,
+    minify: "esbuild",
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          recharts: ["recharts"],
+          supabase: ["@supabase/supabase-js"],
+          radix: [
+            "@radix-ui/react-dialog",
+            "@radix-ui/react-dropdown-menu",
+            "@radix-ui/react-popover",
+            "@radix-ui/react-select",
+            "@radix-ui/react-tooltip",
+          ],
+        },
+      },
+    },
   },
 });
