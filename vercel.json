@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "vite build -c vite.config.vercel.ts && tsx scripts/build-vercel.ts",
+  "buildCommand": "tsx scripts/generate-icons.ts && vite build -c vite.config.vercel.ts && tsx scripts/generate-icons.ts",
   "outputDirectory": "dist/client",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
   "headers": [

@@ -11,6 +11,11 @@
   "categories": ["fitness", "health", "nutrition"],
   "icons": [
     {
+      "src": "/icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
       "src": "/icon-192.svg",
       "sizes": "192x192",
       "type": "image/svg+xml",
@@ -22,7 +27,5 @@
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
-  ],
-  "screenshots": [],
-  "prefer_related_applications": false
+  ]
 }
