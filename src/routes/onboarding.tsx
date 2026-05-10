@@ -175,10 +175,10 @@ function Step1({ form, update }: { form: OnboardingData; update: (k: keyof Onboa
           </div>
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Âge"><Input type="number" placeholder="28" value={form.age || ""} onChange={(e) => update("age", +e.target.value)} /></Field>
-          <Field label="Taille (cm)"><Input type="number" placeholder="180" value={form.height || ""} onChange={(e) => update("height", +e.target.value)} /></Field>
-          <Field label="Poids actuel (kg)"><Input type="number" placeholder="78" step={0.1} value={form.weight || ""} onChange={(e) => update("weight", +e.target.value)} /></Field>
-          <Field label="Poids objectif (kg)"><Input type="number" placeholder="82" step={0.1} value={form.goalWeight || ""} onChange={(e) => update("goalWeight", +e.target.value)} /></Field>
+          <Field label="Âge"><Input type="text" inputMode="numeric" placeholder="28" value={form.age || ""} onChange={(e) => { const v = parseInt(e.target.value) || 0; update("age", v); }} /></Field>
+          <Field label="Taille (cm)"><Input type="text" inputMode="decimal" placeholder="180" value={form.height || ""} onChange={(e) => { const v = parseFloat(e.target.value) || 0; update("height", v); }} /></Field>
+          <Field label="Poids actuel (kg)"><Input type="text" inputMode="decimal" placeholder="78" value={form.weight || ""} onChange={(e) => { const v = parseFloat(e.target.value) || 0; update("weight", v); }} /></Field>
+          <Field label="Poids objectif (kg)"><Input type="text" inputMode="decimal" placeholder="82" value={form.goalWeight || ""} onChange={(e) => { const v = parseFloat(e.target.value) || 0; update("goalWeight", v); }} /></Field>
         </div>
         <Field label="Régimes & allergies">
           <div className="-mx-4 overflow-x-auto no-scrollbar px-4">
