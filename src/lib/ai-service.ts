@@ -69,8 +69,7 @@ export async function generatePlan(
 
       const token = (await import("@/stores/auth.store")).useAuthStore.getState().token;
 
-      const apiBase = (typeof window !== "undefined" && import.meta.env.VITE_API_URL) || "";
-      const res = await fetch(`${apiBase}/api/ai/generate-plan`, {
+      const res = await fetch("/api/ai/generate-plan", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
