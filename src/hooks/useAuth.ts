@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { User, AuthError, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { useAuthStore } from "@/stores/auth.store";
 
 const isBrowser = typeof window !== "undefined";
 
@@ -21,6 +22,11 @@ export function useAuth() {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      if (session) {
+        useAuthStore.getState().setAuth(session.user.id, session.access_token, session.user.user_metadata?.name as string);
+      } else {
+        useAuthStore.getState().clearAuth();
+      }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {

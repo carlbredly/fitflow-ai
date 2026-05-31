@@ -3,8 +3,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useFoodLogs } from "@/hooks/useFoodLog";
 import { useWorkouts } from "@/hooks/useWorkout";
-import { calculateMacros } from "@/lib/calculations";
-import type { Goal, Mode } from "@/types/database.types";
+import { calculateAll } from "@/lib/calculations";
+import type { Goal, Mode, Sex } from "@/types/database.types";
 
 export function useDashboard() {
   const { user } = useAuth();
@@ -26,11 +26,14 @@ export function useDashboard() {
   const macros = useMemo(() => {
     if (calculatedMacros) return calculatedMacros;
     if (!dbProfile) return null;
-    return calculateMacros(
-      2500,
+    return calculateAll(
+      dbProfile.weight_kg ?? 75,
+      dbProfile.height_cm ?? 175,
+      dbProfile.age ?? 30,
+      (dbProfile.sex ?? "m") as Sex,
       (dbProfile.goal ?? "gain") as Goal,
       (dbProfile.mode ?? "normal") as Mode,
-      dbProfile.weight_kg ?? 75,
+      dbProfile.activity_level,
     );
   }, [calculatedMacros, dbProfile]);
 

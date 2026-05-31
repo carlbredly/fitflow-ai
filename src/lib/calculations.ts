@@ -14,7 +14,10 @@ export function calculateTDEE(bmr: number, activityLevel: number): number {
   return Math.round(bmr * activityLevel);
 }
 
-export function getActivityMultiplier(goal: string, mode: string): number {
+export function getActivityMultiplier(goal: string, mode: string, activityLevel?: number | null): number {
+  if (activityLevel && activityLevel >= 1.0 && activityLevel <= 2.5) {
+    return activityLevel;
+  }
   const baseMultiplier: Record<string, number> = {
     gain: 1.55,
     loss: 1.375,
@@ -93,9 +96,10 @@ export function calculateAll(
   sex: "m" | "f",
   goal: Goal,
   mode: Mode,
+  activityLevel?: number | null,
 ): MacroTargets {
   const bmr = calculateBMR(weightKg, heightCm, age, sex);
-  const activity = getActivityMultiplier(goal, mode);
+  const activity = getActivityMultiplier(goal, mode, activityLevel);
   const tdee = calculateTDEE(bmr, activity);
   return calculateMacros(tdee, goal, mode, weightKg);
 }

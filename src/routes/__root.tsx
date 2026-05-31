@@ -9,7 +9,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Session } from "@supabase/supabase-js";
 import appCss from "../styles.css?url";
@@ -102,33 +102,6 @@ function RootComponent() {
 
   useEffect(() => { pathRef.current = location.pathname; }, [location.pathname]);
 
-  const handleRedirect = useCallback(async (session: Session | null) => {
-    const path = pathRef.current;
-    const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + "/"));
-
-    if (!session && !isPublic) {
-      navigate({ to: "/login", replace: true });
-      setChecking(false);
-      return;
-    }
-    if (session) {
-      if (path === "/login") {
-        navigate({ to: "/", replace: true });
-        setChecking(false);
-        return;
-      }
-      if (path === "/" || path === "/onboarding") {
-        try {
-          const { data: profile } = await supabase.from("profiles").select("goal").eq("id", session.user.id).single();
-          const hasGoal = !!profile?.goal;
-          if (path === "/" && !hasGoal) navigate({ to: "/onboarding", replace: true });
-          if (path === "/onboarding" && hasGoal) navigate({ to: "/", replace: true });
-        } catch { /* profile pas encore créé */ }
-      }
-    }
-    setChecking(false);
-  }, [navigate]);
-
   useEffect(() => {
     let cancelled = false;
 
@@ -174,7 +147,7 @@ function RootComponent() {
     poll();
 
     return () => { cancelled = true; sub.subscription.unsubscribe(); };
-  }, [handleRedirect]);
+  }, [navigate]);
 
   if (checking) {
     return (

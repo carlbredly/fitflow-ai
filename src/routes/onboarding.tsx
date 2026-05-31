@@ -39,8 +39,18 @@ export const Route = createFileRoute("/onboarding")({
 const TOTAL = 4;
 
 function Onboarding() {
-  const navigate = useNavigate();
-  const { user } = useAuth();
+  const handleSkip = async () => {
+    if (userId) {
+      await supabase.from("profiles").upsert({
+        id: userId,
+        name: user?.email?.split("@")[0] ?? "Utilisateur",
+        goal: "maintain", mode: "normal", deadline_weeks: 8,
+        program_start_date: new Date().toISOString().split("T")[0],
+        updated_at: new Date().toISOString(),
+      } as Record<string, unknown>);
+    }
+    navigate({ to: "/" });
+  };
 
   const userId = user?.id;
 
@@ -122,29 +132,27 @@ function Onboarding() {
       });
 
       if (plan?.sessions.length) {
-        const sessions = plan.sessions.map((s) => {
-          const sessionDate = new Date();
+        const refDate = new Date();
+        refDate.setHours(0, 0, 0, 0);
 
-          sessionDate.setDate(
-            sessionDate.getDate() +
-              ((s.day_index - sessionDate.getDay() + 7) % 7)
-          );
+        const sessions = plan.sessions.map((s) => {
+          const sessionDate = new Date(refDate);
+          let delta = (s.day_index - refDate.getDay() + 7) % 7;
+          if (delta === 0) delta = 7;
+          sessionDate.setDate(refDate.getDate() + delta);
 
           return {
             user_id: userId,
-            session_date: sessionDate
-              .toISOString()
-              .split("T")[0],
+            session_date: sessionDate.toISOString().split("T")[0],
             session_name: s.session_name,
             day_index: s.day_index,
             exercises: s.exercises,
-            duration_minutes:
+            duration_minutes: Math.round(
               s.exercises.reduce(
-                (sum, e) =>
-                  sum +
-                  Math.round(e.rest / 60) * e.sets,
-                5
-              ) + 5,
+                (sum, e) => sum + (e.rest / 60) * e.sets + 0.75 * e.sets,
+                0,
+              ),
+            ) + 5,
           };
         });
 
@@ -190,12 +198,13 @@ function Onboarding() {
             ))}
           </div>
 
-          <Link
-            to="/"
+          <button
+            type="button"
+            onClick={handleSkip}
             className="text-xs text-muted-foreground"
           >
             Skip
-          </Link>
+          </button>
         </div>
       </header>
 
@@ -618,6 +627,8 @@ function Step4({
     useState<GeneratedPlan | null>(null);
 
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   const [status, setStatus] = useState(
     "Analyse de ton profil..."
@@ -632,6 +643,7 @@ function Step4({
     let mounted = true;
 
     const run = async () => {
+      setError(null); setLoading(true);
       try {
         await new Promise((r) =>
           setTimeout(r, 600)
@@ -660,6 +672,7 @@ function Step4({
         savePlan(result);
       } catch (error) {
         console.error(error);
+        setError("Impossible de contacter l'IA. Vérifie ta connexion.");
       } finally {
         if (mounted) {
           setLoading(false);
@@ -688,10 +701,19 @@ function Step4({
     );
   }
 
-  if (!plan) {
+  if (!plan || error) {
+    const retry = () => { setError(null); setLoading(true); run(); };
     return (
-      <div className="text-center">
-        Erreur lors de la génération.
+      <div className="text-center space-y-4">
+        <p className="text-destructive text-sm">{error ?? "Erreur lors de la génération."}</p>
+        <div className="flex gap-3 justify-center">
+          <button type="button" onClick={retry} className="rounded-xl px-6 py-2.5 text-sm font-semibold grad-accent text-background">
+            Réessayer
+          </button>
+          <button type="button" onClick={onFinish} className="rounded-xl border border-border px-6 py-2.5 text-sm font-medium text-muted-foreground">
+            Continuer sans plan
+          </button>
+        </div>
       </div>
     );
   }

@@ -3,6 +3,32 @@ import { supabase } from "@/lib/supabase";
 import { calculateAll } from "@/lib/calculations";
 import type { Profile, Goal, Mode, Sex } from "@/types/database.types";
 
+async function computeStreak(userId: string): Promise<number> {
+  const { data } = await supabase
+    .from("food_logs")
+    .select("logged_date")
+    .eq("user_id", userId)
+    .gte("logged_date", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0])
+    .order("logged_date", { ascending: false });
+
+  if (!data || data.length === 0) return 0;
+
+  const days = [...new Set(data.map((d) => d.logged_date as string))].sort().reverse();
+  let streak = 0;
+  const check = new Date();
+  check.setHours(0, 0, 0, 0);
+
+  for (const day of days) {
+    if (day === check.toISOString().split("T")[0]) {
+      streak++;
+      check.setDate(check.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
 export function useProfile(userId: string | undefined) {
   const queryClient = useQueryClient();
 
@@ -18,6 +44,16 @@ export function useProfile(userId: string | undefined) {
       return data as Profile | null;
     },
     enabled: !!userId,
+  });
+
+  const streakQuery = useQuery({
+    queryKey: ["streak", userId],
+    queryFn: async () => {
+      if (!userId) return 0;
+      return computeStreak(userId);
+    },
+    enabled: !!userId,
+    staleTime: 60_000,
   });
 
   const mutation = useMutation({
@@ -45,6 +81,7 @@ export function useProfile(userId: string | undefined) {
         (dbProfile.sex ?? "m") as Sex,
         (dbProfile.goal ?? "maintain") as Goal,
         (dbProfile.mode ?? "normal") as Mode,
+        dbProfile.activity_level,
       )
     : null;
 
@@ -53,7 +90,10 @@ export function useProfile(userId: string | undefined) {
     calculatedMacros,
     isLoading: query.isLoading,
     error: query.error,
-    updateProfile: mutation.mutate,
+    updateProfile: mutation.mutateAsync,
     isUpdating: mutation.isPending,
+    updateError: mutation.error,
+    streak: streakQuery.data ?? 0,
+    streakLoading: streakQuery.isLoading,
   };
 }
