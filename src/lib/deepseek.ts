@@ -30,9 +30,10 @@ export async function chatWithCoach(
   profile: ProfileForAI,
   todayStats: DayStatsForAI,
 ): Promise<string> {
+  const token = (await import("@/stores/auth.store")).useAuthStore.getState().token;
   const res = await fetch("/api/ai/chat", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
     body: JSON.stringify({
       messages: messages.map((m) => ({ role: m.role, content: m.content })),
     }),
@@ -63,9 +64,10 @@ interface WorkoutPlanResult {
 export async function generateWorkoutPlan(
   req: WorkoutPlanRequest,
 ): Promise<WorkoutPlanResult> {
+  const token = (await import("@/stores/auth.store")).useAuthStore.getState().token;
   const res = await fetch("/api/ai/generate-plan", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
     body: JSON.stringify({
       goal: req.goal,
       mode: req.mode,

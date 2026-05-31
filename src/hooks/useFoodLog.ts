@@ -69,23 +69,28 @@ export function useFoodLogs(userId: string | undefined, date?: string) {
   const addMutation = useMutation({
     mutationFn: async (input: LogFoodInput) => {
       if (!userId) return null;
-      const { data } = await supabase
+      const payload = {
+        user_id: userId,
+        food_name: input.food_name,
+        meal_type: input.meal_type,
+        logged_date: input.logged_date ?? today,
+        quantity_g: input.quantity_g ?? null,
+        kcal: input.kcal ?? null,
+        protein_g: input.protein_g ?? null,
+        carbs_g: input.carbs_g ?? null,
+        fat_g: input.fat_g ?? null,
+        photo_url: input.photo_url ?? null,
+        source: input.source ?? "manual",
+      };
+      const { data, error } = await supabase
         .from("food_logs")
-        .insert({
-          user_id: userId,
-          food_name: input.food_name,
-          meal_type: input.meal_type,
-          logged_date: input.logged_date ?? today,
-          quantity_g: input.quantity_g ?? null,
-          kcal: input.kcal ?? null,
-          protein_g: input.protein_g ?? null,
-          carbs_g: input.carbs_g ?? null,
-          fat_g: input.fat_g ?? null,
-          photo_url: input.photo_url ?? null,
-          source: input.source ?? "manual",
-        })
+        .insert(payload)
         .select()
         .single();
+      if (error) {
+        console.error("Supabase insert food_log error:", error, "payload:", JSON.stringify(payload));
+        throw error;
+      }
       return data as FoodLog | null;
     },
     onSuccess: () => {
