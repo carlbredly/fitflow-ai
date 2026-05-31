@@ -48,19 +48,27 @@ export async function generatePlan(d: {
   goal: Goal; mode: Mode; weeks: number;
   equipment: string[]; diet_constraints: string[];
 }) {
-  const r = await queryDeepSeek(
-    `Coach fitness expert. Génère programme en JSON UNIQUEMENT: {"coachSummary":"...","sessions":[{"day_index":1,"session_name":"...","exercises":[{"name":"","sets":4,"reps":"8-10","rest":90}]}],"notes":""}`,
-    `${d.name} ${d.sex} ${d.age}ans ${d.weight_kg}kg ${d.height_cm}cm goal:${d.goal} mode:${d.mode} ${d.weeks}sem equip:${d.equipment.join(",")} constraints:${d.diet_constraints.filter(x=>x!=="Aucune").join(",")}`,
-    { maxTokens: 2500 },
-  );
-  const macros = calculateAll(d.weight_kg, d.height_cm, d.age, d.sex as Sex, d.goal, d.mode);
-  const m = r.match(/\{[\s\S]*\}/);
-  const ai = JSON.parse(m?.[0] ?? "{}") as { coachSummary?: string; sessions?: Array<{ day_index: number; session_name: string; exercises: Array<{ name: string; sets: number; reps: string; rest: number }> }>; notes?: string };
-  return {
-    macros, weeklyChange: calculateWeeklyChange(d.goal, d.mode),
-    sessionsPerWeek: d.mode === "extreme" ? 6 : d.mode === "strict" ? 4 : 3,
-    coachSummary: ai.coachSummary ?? "", sessions: ai.sessions ?? [], notes: ai.notes ?? "",
-  };
+  const macros = calculateAll(d.weight_kg || 75, d.height_cm || 175, d.age || 30, d.sex as Sex, d.goal, d.mode);
+  try {
+    const r = await queryDeepSeek(
+      `Coach fitness expert. Génère programme en JSON UNIQUEMENT: {"coachSummary":"...","sessions":[{"day_index":1,"session_name":"...","exercises":[{"name":"","sets":4,"reps":"8-10","rest":90}]}],"notes":""}`,
+      `${d.name} ${d.sex} ${d.age}ans ${d.weight_kg}kg ${d.height_cm}cm goal:${d.goal} mode:${d.mode} ${d.weeks}sem equip:${d.equipment.join(",")} constraints:${d.diet_constraints.filter(x=>x!=="Aucune").join(",")}`,
+      { maxTokens: 2500 },
+    );
+    const m = r.match(/\{[\s\S]*\}/);
+    const ai = JSON.parse(m?.[0] ?? "{}") as { coachSummary?: string; sessions?: Array<{ day_index: number; session_name: string; exercises: Array<{ name: string; sets: number; reps: string; rest: number }> }>; notes?: string };
+    return {
+      macros, weeklyChange: calculateWeeklyChange(d.goal, d.mode),
+      sessionsPerWeek: d.mode === "extreme" ? 6 : d.mode === "strict" ? 4 : 3,
+      coachSummary: ai.coachSummary ?? "Plan adapté à ton profil.", sessions: ai.sessions ?? [], notes: ai.notes ?? "",
+    };
+  } catch {
+    return {
+      macros, weeklyChange: calculateWeeklyChange(d.goal, d.mode),
+      sessionsPerWeek: d.mode === "extreme" ? 6 : d.mode === "strict" ? 4 : 3,
+      coachSummary: "Plan calculé localement (IA indisponible). Ajuste selon tes besoins.", sessions: [],
+    };
+  }
 }
 
 export async function chat(userId: string, messages: Array<{ role: "user" | "assistant"; content: string }>) {
