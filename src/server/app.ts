@@ -4,7 +4,18 @@ import helmet from "helmet";
 import { resolve } from "path";
 import { existsSync } from "fs";
 import { ENV } from "./config/env.js";
+import authRoutes from "./routes/auth.routes.js";
+import profileRoutes from "./routes/profile.routes.js";
+import foodRoutes from "./routes/food.routes.js";
+import weightRoutes from "./routes/weight.routes.js";
+import workoutRoutes from "./routes/workout.routes.js";
+import dashboardRoutes from "./routes/dashboard.routes.js";
+import aiRoutes from "./routes/ai.routes.js";
+import { errorHandler } from "./middleware/error.js";
 
+const app = express();
+
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: ENV.CLIENT_URL, credentials: true }));
 app.use(express.json({ limit: "10mb" }));
 
@@ -18,15 +29,12 @@ app.use("/api/ai", aiRoutes);
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
-// Production: serve built frontend
 const isProd = ENV.NODE_ENV === "production";
 if (isProd) {
   const clientDist = resolve(process.cwd(), "dist", "client");
   if (existsSync(clientDist)) {
     app.use(express.static(clientDist));
-    app.get("*", (_req, res) => {
-      res.sendFile(resolve(clientDist, "index.html"));
-    });
+    app.get("*", (_req, res) => res.sendFile(resolve(clientDist, "index.html")));
   }
 }
 

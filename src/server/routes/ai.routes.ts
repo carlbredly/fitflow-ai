@@ -6,8 +6,8 @@ import { aiRateLimit } from "../middleware/ratelimit.js";
 import { scanFoodSchema, generatePlanSchema, chatSchema } from "../lib/validations.js";
 
 const router = Router();
-router.use(aiRateLimit);
 router.use(authenticate);
+router.use(aiRateLimit);
 router.post("/scan-food", validate(scanFoodSchema), scanFood);
 router.post("/generate-plan", validate(generatePlanSchema), generatePlanCtrl);
 router.post("/chat", validate(chatSchema), chatCtrl);

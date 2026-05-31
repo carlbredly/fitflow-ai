@@ -23,6 +23,39 @@ export async function queryDeepSeek(
       ],
     }),
   });
+  if (!res.ok) throw new Error(`DeepSeek error: ${res.status}`);
+  const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+  return data.choices?.[0]?.message?.content ?? "";
+}
+
+export async function queryDeepSeekVision(
+  systemPrompt: string,
+  base64Image: string,
+  mimeType: string,
+  options?: { maxTokens?: number },
+): Promise<string> {
+  const res = await fetch(BASE, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${ENV.DEEPSEEK_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "deepseek-chat",
+      max_tokens: options?.maxTokens ?? 1500,
+      stream: false,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Image}` } },
+            { type: "text", text: systemPrompt },
+          ],
+        },
+      ],
+    }),
+  });
+  if (!res.ok) throw new Error(`DeepSeek vision error: ${res.status}`);
   const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
   return data.choices?.[0]?.message?.content ?? "";
 }

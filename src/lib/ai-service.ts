@@ -1,4 +1,4 @@
-import { analyzeFoodImage, chatWithCoach, generateWorkoutPlan } from "@/lib/deepseek";
+import { chatWithCoach, generateWorkoutPlan } from "@/lib/deepseek";
 import { calculateAll } from "@/lib/calculations";
 
 export interface OnboardingData {
@@ -151,4 +151,4 @@ export async function askCoach(
   return chatWithCoach(messages as any, profile as any, todayStats);
 }
 
-export { analyzeFoodImage, generateWorkoutPlan };
+export { generateWorkoutPlan };

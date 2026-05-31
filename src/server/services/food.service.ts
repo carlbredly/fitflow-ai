@@ -1,7 +1,7 @@
 import { supabase } from "../lib/supabase.js";
 import type { FoodLog, MealType } from "@/types/database.types.js";
 import { todayISO } from "../lib/date.js";
-import { queryDeepSeek, streamDeepSeek } from "../lib/deepseek.js";
+import { queryDeepSeek, queryDeepSeekVision, streamDeepSeek } from "../lib/deepseek.js";
 import { calculateAll, calculateWeeklyChange } from "../lib/calculations.js";
 import type { Goal, Mode, Sex } from "../lib/calculations.js";
 import { getDashboard } from "./dashboard.service.js";
@@ -33,13 +33,17 @@ export async function deleteFoodLog(id: string, userId: string) {
 }
 
 export async function analyzeFood(base64: string, mime: string) {
-  const r = await queryDeepSeek(
+  const r = await queryDeepSeekVision(
     `Tu es nutritionniste. Analyse cette photo et réponds UNIQUEMENT en JSON: {"aliments":[{"nom":"","quantite_g":0,"kcal":0,"proteines_g":0,"glucides_g":0,"lipides_g":0,"confiance":"haute|moyenne|basse"}],"total":{"kcal":0,"proteines_g":0,"glucides_g":0,"lipides_g":0},"notes":""}`,
-    `[image base64]`,
+    base64, mime,
     { maxTokens: 1500 },
   );
   const m = r.match(/\{[\s\S]*\}/);
-  return JSON.parse(m?.[0] ?? "{}");
+  const parsed = JSON.parse(m?.[0] ?? "{}");
+  if (!parsed.aliments || !Array.isArray(parsed.aliments)) {
+    throw new Error("DeepSeek a retourné un JSON invalide");
+  }
+  return parsed;
 }
 
 export async function generatePlan(d: {
@@ -66,7 +70,7 @@ export async function generatePlan(d: {
     return {
       macros, weeklyChange: calculateWeeklyChange(d.goal, d.mode),
       sessionsPerWeek: d.mode === "extreme" ? 6 : d.mode === "strict" ? 4 : 3,
-      coachSummary: "Plan calculé localement (IA indisponible). Ajuste selon tes besoins.", sessions: [],
+      coachSummary: "Plan calculé localement (IA indisponible).", sessions: [],
     };
   }
 }
