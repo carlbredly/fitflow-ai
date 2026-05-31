@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS food_logs (
   carbs_g NUMERIC(5,1),
   fat_g NUMERIC(5,1),
   photo_url TEXT,
-  source TEXT CHECK (source IN ('manual','ai_scan','search')) DEFAULT 'manual',
+  source TEXT CHECK (source IN ('manual','ai_scan','ai_plan','search')) DEFAULT 'manual',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

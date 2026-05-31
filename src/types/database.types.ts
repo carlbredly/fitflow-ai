@@ -73,7 +73,7 @@ export interface FoodLog {
   carbs_g: number | null;
   fat_g: number | null;
   photo_url: string | null;
-  source: "manual" | "ai_scan" | "search" | null;
+  source: "manual" | "ai_scan" | "ai_plan" | "search" | null;
   created_at: string;
 }
 
@@ -113,4 +113,4 @@ export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
 export type Goal = "gain" | "loss" | "maintain";
 export type Mode = "normal" | "strict" | "extreme";
 export type Sex = "m" | "f";
-export type FoodSource = "manual" | "ai_scan" | "search";
+export type FoodSource = "manual" | "ai_scan" | "ai_plan" | "search";
