@@ -53,13 +53,13 @@ export async function generatePlan(
   data: OnboardingData,
   signal?: AbortSignal,
 ): Promise<GeneratedPlan> {
-  const maxRetries = 3;
-  const baseDelay = 2000;
+  const maxRetries = 2;
+  const baseDelay = 1000;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const controller = new AbortController();
-      const timeoutMs = 20000;
+      const timeoutMs = attempt === 1 ? 5000 : 3000;
 
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -92,6 +92,12 @@ export async function generatePlan(
       });
 
       clearTimeout(timeoutId);
+
+      // Détection Vercel / pas d'API : si le body commence par <!DOCTYPE, c'est du HTML SPA
+      const ct = res.headers.get("content-type") || "";
+      if (ct.includes("text/html") || ct.includes("text/plain")) {
+        throw new Error("API non disponible (mode local)");
+      }
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as { message?: string };
