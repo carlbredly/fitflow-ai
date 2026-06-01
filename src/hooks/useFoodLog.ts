@@ -107,6 +107,20 @@ export function useFoodLogs(userId: string | undefined, date?: string) {
     },
   });
 
+  const deleteAiMutation = useMutation({
+    mutationFn: async () => {
+      await supabase
+        .from("food_logs")
+        .delete()
+        .eq("user_id", userId)
+        .eq("logged_date", today)
+        .eq("source", "ai_scan");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["foodLogs", userId] });
+    },
+  });
+
   return {
     logs,
     groupedByMeal,
@@ -117,6 +131,8 @@ export function useFoodLogs(userId: string | undefined, date?: string) {
     isAdding: addMutation.isPending,
     deleteFood: deleteMutation.mutate,
     isDeleting: deleteMutation.isPending,
+    deleteAiMeals: deleteAiMutation.mutate,
+    isDeletingAi: deleteAiMutation.isPending,
   };
 }
 

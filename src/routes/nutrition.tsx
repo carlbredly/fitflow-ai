@@ -9,7 +9,6 @@ import { CalorieRing } from "@/components/app/CalorieRing";
 import { useAuth } from "@/hooks/useAuth";
 import { useFoodLogs } from "@/hooks/useFoodLog";
 import { useProfile } from "@/hooks/useProfile";
-import { supabase } from "@/lib/supabase";
 import type { MealType } from "@/types/database.types";
 
 export const Route = createFileRoute("/nutrition")({
@@ -345,7 +344,7 @@ function Nutrition() {
   const { user } = useAuth();
   const userId = user?.id;
   const { calculatedMacros, isLoading: profileLoading, profile: dbProfile } = useProfile(userId);
-  const { totals, groupedByMeal, mealTotals, addFood, isAdding, isLoading } = useFoodLogs(userId);
+  const { totals, groupedByMeal, mealTotals, addFood, isAdding, isLoading, deleteAiMeals } = useFoodLogs(userId);
   const macros = calculatedMacros ?? { kcal: 2000, protein: 150, carbs: 200, fat: 65 };
 
   if (isLoading || profileLoading) {
@@ -394,6 +393,7 @@ function Nutrition() {
           isAdding={isAdding}
           userId={userId}
           dbProfile={dbProfile}
+          deleteAiMeals={deleteAiMeals}
         />
       )}
       {tab === "Scanner" && <ScannerView userId={userId} addFood={addFood} isAdding={isAdding} />}
@@ -405,7 +405,7 @@ function Nutrition() {
 // ─── Journal View ─────────────────────────────────────────────────────────────
 
 function JournalView({
-  totals, macros, groupedByMeal, mealTotals, addFood, isAdding, userId, dbProfile,
+  totals, macros, groupedByMeal, mealTotals, addFood, isAdding, userId, dbProfile, deleteAiMeals,
 }: {
   totals: { kcal: number; protein: number; carbs: number; fat: number };
   macros: { kcal: number; protein: number; carbs: number; fat: number };
@@ -415,6 +415,7 @@ function JournalView({
   isAdding: boolean;
   userId: string | undefined;
   dbProfile: Record<string, unknown> | null;
+  deleteAiMeals: () => void;
 }) {
   const [open, setOpen] = useState<MealType | null>("breakfast");
   const [addingTo, setAddingTo] = useState<MealType | null>(null);
@@ -457,14 +458,7 @@ function JournalView({
 
     try {
       // Delete all previously AI-generated meals for today
-      if (userId) {
-        await supabase
-          .from("food_logs")
-          .delete()
-          .eq("user_id", userId)
-          .eq("logged_date", new Date().toISOString().split("T")[0])
-          .eq("source", "ai_scan");
-      }
+      deleteAiMeals();
 
       const goal = String((dbProfile as Record<string, unknown>).goal ?? "maintain");
       const mode = String((dbProfile as Record<string, unknown>).mode ?? "flexible");
