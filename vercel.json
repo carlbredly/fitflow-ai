@@ -2,7 +2,17 @@
   "version": 2,
   "buildCommand": "vite build -c vite.config.vercel.ts && tsx scripts/generate-icons.ts",
   "outputDirectory": "dist/client",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
+  "functions": {
+    "api/index.ts": {
+      "memory": 256,
+      "maxDuration": 30
+    }
+  },
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ],
   "headers": [
     {
       "source": "/assets/(.*)",
