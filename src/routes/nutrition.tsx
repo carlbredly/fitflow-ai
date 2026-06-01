@@ -344,7 +344,7 @@ function Nutrition() {
   const { user } = useAuth();
   const userId = user?.id;
   const { calculatedMacros, isLoading: profileLoading, profile: dbProfile } = useProfile(userId);
-  const { totals, groupedByMeal, mealTotals, addFood, isAdding, isLoading } = useFoodLogs(userId);
+  const { logs, totals, groupedByMeal, mealTotals, addFood, deleteFood, isAdding, isLoading } = useFoodLogs(userId);
   const macros = calculatedMacros ?? { kcal: 2000, protein: 150, carbs: 200, fat: 65 };
 
   if (isLoading || profileLoading) {
@@ -455,6 +455,13 @@ function JournalView({
     setAiStatus(null);
 
     try {
+      // Supprimer les anciens aliments générés par l'IA aujourd'hui
+      for (const item of logs) {
+        if (["ai_scan", "ai_plan"].includes(item.source || "")) {
+          deleteFood(item.id);
+        }
+      }
+
       const goal = String((dbProfile as Record<string, unknown>).goal ?? "maintain");
       const mode = String((dbProfile as Record<string, unknown>).mode ?? "flexible");
 
