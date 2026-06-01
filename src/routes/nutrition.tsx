@@ -499,7 +499,7 @@ function JournalView({
       setAiLoading(false);
       setTimeout(() => setAiStatus(null), 5000);
     }
-  }, [dbProfile, macros, addFood]);
+  }, [dbProfile, macros, addFood, logs, deleteFood]);
 
   return (
     <>
