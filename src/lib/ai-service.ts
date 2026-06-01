@@ -54,12 +54,17 @@ export async function generatePlan(
   signal?: AbortSignal,
 ): Promise<GeneratedPlan> {
   // Quick health check: si l'API répond avec HTML ou pas du tout → fallback local immédiat
+  const healthCheckSignal = new AbortController();
+  const healthTimeout = setTimeout(() => healthCheckSignal.abort(), 3000);
   try {
-    const hc = await fetch("/api/health", { signal: AbortSignal.timeout(2000) });
+    const hc = await fetch("/api/health", { signal: healthCheckSignal.signal });
     const ct = hc.headers.get("content-type") || "";
     if (ct.includes("text/html") || !hc.ok) throw new Error("no api");
   } catch {
+    clearTimeout(healthTimeout);
     throw new Error("API non disponible (mode local)");
+  } finally {
+    clearTimeout(healthTimeout);
   }
 
   const maxRetries = 1;
@@ -68,7 +73,7 @@ export async function generatePlan(
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const controller = new AbortController();
-      const timeoutMs = 8000;
+      const timeoutMs = 12000;
 
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 

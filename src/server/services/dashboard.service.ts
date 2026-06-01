@@ -2,7 +2,7 @@ import { supabase } from "../lib/supabase.js";
 import { calculateAll } from "../lib/calculations.js";
 import type { Goal, Mode, Sex, MacroTargets } from "../lib/calculations.js";
 import { todayISO } from "../lib/date.js";
-import type { Profile } from "@/types/database.types.js";
+import type { Profile } from "../../types/database.types.js";
 
 export async function getProfile(userId: string): Promise<Profile | null> {
   const { data } = await supabase.from("profiles").select("*").eq("id", userId).single();

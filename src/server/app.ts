@@ -16,7 +16,20 @@ import { errorHandler } from "./middleware/error.js";
 const app = express();
 
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors({ origin: ENV.CLIENT_URL, credentials: true }));
+
+const ALLOWED_ORIGINS = ENV.CLIENT_URL
+  ? ENV.CLIENT_URL.split(",").map((s) => s.trim())
+  : [];
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, true);
+    }
+  },
+  credentials: true,
+}));
 app.use(express.json({ limit: "10mb" }));
 
 app.use("/api/auth", authRoutes);
@@ -27,7 +40,8 @@ app.use("/api/workout-sessions", workoutRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/ai", aiRoutes);
 
-app.get("/health", (_req, res) => res.json({ status: "ok" }));
+app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
+app.get("/health", (_req, res) => res.redirect("/api/health"));
 
 const isProd = ENV.NODE_ENV === "production";
 if (isProd) {

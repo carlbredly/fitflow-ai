@@ -1,5 +1,5 @@
 import { supabase } from "../lib/supabase.js";
-import type { FoodLog, MealType } from "@/types/database.types.js";
+import type { FoodLog, MealType } from "../../types/database.types.js";
 import { todayISO } from "../lib/date.js";
 import { queryDeepSeek, queryDeepSeekVision, streamDeepSeek } from "../lib/deepseek.js";
 import { calculateAll, calculateWeeklyChange } from "../lib/calculations.js";
