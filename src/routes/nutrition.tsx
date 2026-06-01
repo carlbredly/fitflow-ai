@@ -478,7 +478,7 @@ function JournalView({
             protein_g:  a.proteines_g,
             carbs_g:    a.glucides_g,
             fat_g:      a.lipides_g,
-            source:     "ai_plan",
+            source:     "ai_scan",
           });
           saved++;
         }
