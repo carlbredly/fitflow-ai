@@ -1,7 +1,8 @@
 import { config } from "dotenv";
 import { resolve } from "path";
 
-config({ path: resolve(process.cwd(), ".env.local"), override: true });
+config({ path: resolve(process.cwd(), ".env") });           // load .env first
+config({ path: resolve(process.cwd(), ".env.local"), override: true }); // .env.local overrides
 
 export const ENV = {
   PORT: parseInt(process.env.API_PORT ?? process.env.VITE_API_PORT ?? "5000", 10),
