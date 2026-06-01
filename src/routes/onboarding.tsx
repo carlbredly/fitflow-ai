@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import {
-  ArrowRight, ArrowLeft, Check, Sparkles, Home, Dumbbell, Cable, Weight, Loader2, XCircle, AlertTriangle,
+  ArrowRight, ArrowLeft, Check, Sparkles, Home, Dumbbell, Cable, Weight, Loader2, AlertTriangle,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { generatePlan, generateLocalFallback, checkApiKey } from "@/lib/ai-service";
@@ -31,12 +31,13 @@ function Onboarding() {
     dietConstraints: [], goal: "gain", mode: "normal", weeks: 4, equipment: [],
   });
 
-  const update = <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) =>
+  const update = useCallback(<K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }, []);
 
-  const prev = () => setStep((p) => Math.max(0, p - 1));
+  const prev = useCallback(() => setStep((p) => Math.max(0, p - 1)), []);
 
-  const next = async () => {
+  const next = useCallback(async () => {
     if (step === 2) {
       if (generating) return;
       setGenerating(true);
@@ -55,7 +56,6 @@ function Onboarding() {
           setGenError("Génération annulée");
           return;
         }
-        // Use local fallback
         const fallback = generateLocalFallback(form);
         setPlan(fallback);
         setGenError("Plan calculé localement (l'IA était indisponible)");
@@ -67,13 +67,13 @@ function Onboarding() {
       return;
     }
     if (step < TOTAL - 1) setStep((p) => p + 1);
-  };
+  }, [step, generating, form]);
 
-  const cancelGeneration = () => {
+  const cancelGeneration = useCallback(() => {
     abortRef.current?.abort();
-  };
+  }, []);
 
-  const handleSkip = async () => {
+  const handleSkip = useCallback(async () => {
     if (userId) {
       await supabase.from("profiles").upsert({
         id: userId, name: user?.email?.split("@")[0] ?? "Utilisateur",
@@ -83,11 +83,11 @@ function Onboarding() {
       } as Record<string, unknown>);
     }
     navigate({ to: "/" });
-  };
+  }, [userId, user, navigate]);
 
   const canContinue = form.name.trim() !== "" && form.age > 0 && form.height > 0 && form.weight > 0 && form.goalWeight > 0;
 
-  const handleFinish = async () => {
+  const handleFinish = useCallback(async () => {
     if (!userId) { navigate({ to: "/" }); return; }
     setSaving(true);
     try {
@@ -101,7 +101,6 @@ function Onboarding() {
         goal: form.goal, mode: form.mode, deadline_weeks: form.weeks,
         equipment: form.equipment, program_start_date: today, updated_at: now,
       } as Record<string, unknown>);
-
       if (plan?.sessions.length) {
         const refDate = new Date(); refDate.setHours(0, 0, 0, 0);
         const sessions = plan.sessions.map((s) => {
@@ -122,11 +121,7 @@ function Onboarding() {
       navigate({ to: "/" });
     } catch (error) { console.error("Save error:", error); }
     finally { setSaving(false); }
-  };
-
-  if (!checkApiKey() && !generating) {
-    // Still allow onboarding — fallback will be used
-  }
+  }, [userId, form, plan, navigate]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -147,19 +142,12 @@ function Onboarding() {
         {step === 0 && <Step1 form={form} update={update} />}
         {step === 1 && <Step2 form={form} update={update} />}
         {step === 2 && <Step3 form={form} update={update} />}
-        {step === 3 && (
-          <Step4 form={form} plan={plan} genError={genError} onFinish={handleFinish} saving={saving} />
-        )}
+        {step === 3 && <Step4 form={form} plan={plan} genError={genError} onFinish={handleFinish} saving={saving} />}
       </main>
 
       {step < 3 && (
         <div className="fixed inset-x-0 bottom-0 z-30 glass border-t border-border safe-bottom">
           <div className="mx-auto max-w-2xl p-4 space-y-2">
-            {!checkApiKey() && !generating && (
-              <p className="text-xs text-warning text-center" style={{ color: "var(--warning)" }}>
-                <AlertTriangle className="inline h-3 w-3 mr-1" />Clé API DeepSeek manquante — le plan sera calculé localement
-              </p>
-            )}
             <button type="button" onClick={generating ? cancelGeneration : next}
               disabled={step === 0 && !canContinue}
               className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold transition disabled:opacity-50"
@@ -170,19 +158,6 @@ function Onboarding() {
                 <>{step === 2 ? "Générer mon plan ✨" : "Continuer"} <ArrowRight className="h-4 w-4" /></>
               )}
             </button>
-            {!generating && step < 2 && (
-              <div className="flex items-center gap-2">
-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-3">
-                  <div className="h-full grad-accent animate-pulse" style={{ width: "60%" }} />
-                </div>
-                <span className="text-xs text-muted-foreground">Génération en cours...</span>
-              </div>
-            )}
-            {genError && step < 3 && (
-              <p className="text-xs text-center" style={{ color: "var(--warning)" }}>
-                <AlertTriangle className="inline h-3 w-3 mr-1" />{genError}
-              </p>
-            )}
           </div>
         </div>
       )}
@@ -190,20 +165,7 @@ function Onboarding() {
   );
 }
 
-function Title({ children, sub }: { children: React.ReactNode; sub: string }) {
-  return (
-    <div className="mb-6 animate-slide-up">
-      <h1 className="text-3xl font-bold leading-tight">{children}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">{sub}</p>
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (<label className="block"><span className="mb-1.5 block text-xs font-medium text-muted-foreground">{label}</span>{children}</label>);
-}
-
-function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
+function SimpleInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={`w-full rounded-xl border border-border bg-surface-1 px-4 py-3 text-sm outline-none transition focus:border-accent ${props.className ?? ""}`} />;
 }
 
@@ -211,103 +173,77 @@ function Step1({ form, update }: { form: OnboardingData; update: (k: keyof Onboa
   const tags = ["Aucune", "Végétarien", "Vegan", "Sans gluten", "Sans lactose", "Halal", "Allergie noix"];
   const toggle = (tag: string) => {
     if (tag === "Aucune") { update("dietConstraints", ["Aucune"]); return; }
-    const picked = form.dietConstraints.includes(tag)
-      ? form.dietConstraints.filter((x) => x !== tag)
-      : [...form.dietConstraints.filter((d) => d !== "Aucune"), tag];
+    const picked = form.dietConstraints.includes(tag) ? form.dietConstraints.filter((x) => x !== tag) : [...form.dietConstraints.filter((d) => d !== "Aucune"), tag];
     update("dietConstraints", picked.length ? picked : ["Aucune"]);
   };
   return (
-    <>
-      <Title sub="Pour calculer tes besoins exacts">Parle-nous de toi</Title>
-      <div className="space-y-4">
-        <Field label="Prénom"><Input placeholder="Alex" value={form.name} onChange={(e) => update("name", e.target.value)} /></Field>
-        <Field label="Sexe">
-          <div className="grid grid-cols-2 gap-2">
-            {(["m", "f"] as const).map((s) => (
-              <button key={s} type="button" onClick={() => update("sex", s)}
-                className="flex items-center justify-center gap-2 rounded-xl border-2 px-3 py-3.5 text-sm font-medium transition"
-                style={{ borderColor: form.sex === s ? "var(--accent)" : "var(--border)", background: form.sex === s ? "color-mix(in oklab, var(--accent) 12%, transparent)" : "var(--surface-1)" }}>
-                <span>{s === "m" ? "👨" : "👩"}</span> {s === "m" ? "Homme" : "Femme"}
-              </button>
-            ))}
-          </div>
-        </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Âge"><Input type="number" value={form.age || ""} onChange={(e) => update("age", e.target.value === "" ? 0 : parseInt(e.target.value))} /></Field>
-          <Field label="Taille (cm)"><Input type="number" value={form.height || ""} onChange={(e) => update("height", e.target.value === "" ? 0 : parseFloat(e.target.value))} /></Field>
-          <Field label="Poids (kg)"><Input type="number" step={0.1} value={form.weight || ""} onChange={(e) => update("weight", e.target.value === "" ? 0 : parseFloat(e.target.value))} /></Field>
-          <Field label="Poids objectif (kg)"><Input type="number" step={0.1} value={form.goalWeight || ""} onChange={(e) => update("goalWeight", e.target.value === "" ? 0 : parseFloat(e.target.value))} /></Field>
+    <div className="animate-slide-up space-y-4">
+      <h1 className="text-3xl font-bold leading-tight">Parle-nous de toi</h1>
+      <p className="text-sm text-muted-foreground">Pour calculer tes besoins exacts</p>
+      <label className="block"><span className="mb-1.5 block text-xs font-medium text-muted-foreground">Prénom</span>
+        <SimpleInput placeholder="Alex" value={form.name} onChange={(e) => update("name", e.target.value)} />
+      </label>
+      <label className="block"><span className="mb-1.5 block text-xs font-medium text-muted-foreground">Sexe</span>
+        <div className="grid grid-cols-2 gap-2">
+          {(["m", "f"] as const).map((s) => (
+            <button key={s} type="button" onClick={() => update("sex", s)}
+              className="flex items-center justify-center gap-2 rounded-xl border-2 px-3 py-3.5 text-sm font-medium transition"
+              style={{ borderColor: form.sex === s ? "var(--accent)" : "var(--border)", background: form.sex === s ? "color-mix(in oklab, var(--accent) 12%, transparent)" : "var(--surface-1)" }}>
+              <span>{s === "m" ? "👨" : "👩"}</span> {s === "m" ? "Homme" : "Femme"}
+            </button>
+          ))}
         </div>
-        <Field label="Régimes & allergies">
-          <div className="-mx-4 overflow-x-auto no-scrollbar px-4">
-            <div className="flex gap-2 pb-1">
-              {tags.map((t) => {
-                const on = form.dietConstraints.includes(t);
-                return (<button key={t} type="button" onClick={() => toggle(t)}
-                  className="shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition"
-                  style={{ borderColor: on ? "var(--accent)" : "var(--border)", background: on ? "var(--accent)" : "var(--surface-1)", color: on ? "var(--accent-foreground)" : "var(--foreground)" }}>{t}</button>);
-              })}
-            </div>
-          </div>
-        </Field>
+      </label>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block"><span className="mb-1.5 block text-xs font-medium text-muted-foreground">Âge</span>
+          <SimpleInput type="number" value={form.age || ""} onChange={(e) => update("age", e.target.value === "" ? 0 : parseInt(e.target.value))} />
+        </label>
+        <label className="block"><span className="mb-1.5 block text-xs font-medium text-muted-foreground">Taille (cm)</span>
+          <SimpleInput type="number" value={form.height || ""} onChange={(e) => update("height", e.target.value === "" ? 0 : parseFloat(e.target.value))} />
+        </label>
+        <label className="block"><span className="mb-1.5 block text-xs font-medium text-muted-foreground">Poids (kg)</span>
+          <SimpleInput type="number" step={0.1} value={form.weight || ""} onChange={(e) => update("weight", e.target.value === "" ? 0 : parseFloat(e.target.value))} />
+        </label>
+        <label className="block"><span className="mb-1.5 block text-xs font-medium text-muted-foreground">Poids objectif (kg)</span>
+          <SimpleInput type="number" step={0.1} value={form.goalWeight || ""} onChange={(e) => update("goalWeight", e.target.value === "" ? 0 : parseFloat(e.target.value))} />
+        </label>
       </div>
-    </>
+      <label className="block"><span className="mb-1.5 block text-xs font-medium text-muted-foreground">Régimes & allergies</span>
+        <div className="-mx-4 overflow-x-auto no-scrollbar px-4">
+          <div className="flex gap-2 pb-1">
+            {tags.map((t) => {
+              const on = form.dietConstraints.includes(t);
+              return (<button key={t} type="button" onClick={() => toggle(t)}
+                className="shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition"
+                style={{ borderColor: on ? "var(--accent)" : "var(--border)", background: on ? "var(--accent)" : "var(--surface-1)", color: on ? "var(--accent-foreground)" : "var(--foreground)" }}>{t}</button>);
+            })}
+          </div>
+        </div>
+      </label>
+    </div>
   );
 }
 
 function Step2({ form, update }: { form: OnboardingData; update: (k: keyof OnboardingData, v: any) => void }) {
-  const goals = [
-    { id: "gain" as const, emoji: "💪", title: "Prise de masse", sub: "+200 à +500 kcal" },
-    { id: "loss" as const, emoji: "🔥", title: "Perte de poids", sub: "-400 kcal · déficit" },
-    { id: "maintain" as const, emoji: "⚖️", title: "Maintien", sub: "Maintenance · ratio optimisé" },
-  ];
-  const modes = [
-    { id: "normal" as const, emoji: "🟢", title: "Normal", sub: "Progression douce, facile à tenir", color: "var(--success)" },
-    { id: "strict" as const, emoji: "🟠", title: "Strict", sub: "Bons résultats, demande de la rigueur", color: "var(--orange)" },
-    { id: "extreme" as const, emoji: "🔴", title: "Extrême", sub: "Maximum, effort intense, pour confirmés", color: "var(--danger)" },
-  ];
   return (
-    <>
-      <Title sub="Choisis ton objectif et ton intensité">Ton objectif</Title>
-      <div className="space-y-2">
-        {goals.map((g) => {
-          const on = form.goal === g.id;
-          return (<button key={g.id} type="button" onClick={() => update("goal", g.id)}
-            className="relative flex w-full items-center gap-4 overflow-hidden rounded-2xl border-2 p-4 text-left transition"
-            style={{ borderColor: on ? "var(--accent)" : "var(--border)", background: on ? "color-mix(in oklab, var(--accent) 10%, var(--surface-1))" : "var(--surface-1)" }}>
-            {on && <span className="absolute left-0 top-0 h-full w-1 grad-accent" />}
-            <span className="text-2xl">{g.emoji}</span>
-            <div className="flex-1"><p className="text-sm font-semibold">{g.title}</p><p className="text-xs text-muted-foreground">{g.sub}</p></div>
-          </button>);
-        })}
-      </div>
-      <h2 className="mb-3 mt-6 text-sm font-semibold">Mode d'entraînement</h2>
-      <div className="space-y-2">
-        {modes.map((m) => {
-          const on = form.mode === m.id;
-          return (<button key={m.id} type="button" onClick={() => update("mode", m.id)}
-            className="block w-full rounded-2xl border-2 p-4 text-left transition"
-            style={{ borderColor: on ? "var(--accent)" : "var(--border)", background: on ? "color-mix(in oklab, var(--accent) 10%, var(--surface-1))" : "var(--surface-1)" }}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2"><span>{m.emoji}</span><span className="text-sm font-semibold">{m.title}</span></div>
-              <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
-                style={{ background: `color-mix(in oklab, ${m.color} 18%, transparent)`, color: m.color }}>{m.title}</span>
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">{m.sub}</p>
-          </button>);
-        })}
-      </div>
-      <h2 className="mb-3 mt-6 text-sm font-semibold">Durée du programme</h2>
-      <div className="flex gap-2">
-        {[4, 8, 12, 16].map((w) => (
-          <button key={w} type="button" onClick={() => update("weeks", w)}
-            className="flex-1 rounded-xl border-2 py-3 text-sm font-medium transition"
-            style={{ borderColor: form.weeks === w ? "var(--accent)" : "var(--border)", background: form.weeks === w ? "color-mix(in oklab, var(--accent) 10%, var(--surface-1))" : "var(--surface-1)" }}>
-            {w} sem
-          </button>
-        ))}
-      </div>
-    </>
+    <div className="animate-slide-up space-y-4">
+      <h1 className="text-3xl font-bold leading-tight">Ton objectif</h1>
+      <p className="text-sm text-muted-foreground">Choisis ton objectif et ton intensité</p>
+      {[
+        { id: "gain" as const, emoji: "💪", title: "Prise de masse", sub: "+200 à +500 kcal" },
+        { id: "loss" as const, emoji: "🔥", title: "Perte de poids", sub: "-400 kcal · déficit" },
+        { id: "maintain" as const, emoji: "⚖️", title: "Maintien", sub: "Maintenance" },
+      ].map((g) => {
+        const on = form.goal === g.id;
+        return (<button key={g.id} type="button" onClick={() => update("goal", g.id)}
+          className="relative flex w-full items-center gap-4 overflow-hidden rounded-2xl border-2 p-4 text-left transition"
+          style={{ borderColor: on ? "var(--accent)" : "var(--border)", background: on ? "color-mix(in oklab, var(--accent) 10%, var(--surface-1))" : "var(--surface-1)" }}>
+          {on && <span className="absolute left-0 top-0 h-full w-1 grad-accent" />}
+          <span className="text-2xl">{g.emoji}</span>
+          <div className="flex-1"><p className="text-sm font-semibold">{g.title}</p><p className="text-xs text-muted-foreground">{g.sub}</p></div>
+        </button>);
+      })}
+    </div>
   );
 }
 
@@ -318,8 +254,9 @@ function Step3({ form, update }: { form: OnboardingData; update: (k: keyof Onboa
     update("equipment", picked.length ? picked : ["home"]);
   };
   return (
-    <>
-      <Title sub="Choisis ton équipement">Ton programme</Title>
+    <div className="animate-slide-up space-y-4">
+      <h1 className="text-3xl font-bold leading-tight">Ton programme</h1>
+      <p className="text-sm text-muted-foreground">Choisis ton équipement</p>
       <div className="grid grid-cols-2 gap-3">
         {items.map((item) => {
           const on = form.equipment.includes(item.id);
@@ -332,7 +269,7 @@ function Step3({ form, update }: { form: OnboardingData; update: (k: keyof Onboa
           </button>);
         })}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -340,62 +277,31 @@ function Step4({ form, plan, genError, onFinish, saving }: {
   form: OnboardingData; plan: GeneratedPlan | null; genError: string | null; onFinish: () => void; saving: boolean;
 }) {
   if (!plan) return null;
-  const formatKcal = (n: number) => n.toLocaleString();
   const targetDiff = form.goalWeight - form.weight;
   const diffLabel = targetDiff >= 0 ? `+${targetDiff.toFixed(1)}` : targetDiff.toFixed(1);
-
   return (
-    <>
-      <div className="mb-6 animate-slide-up text-center">
-        <h1 className="text-3xl font-bold">Ton plan est prêt, {form.name || "Sportif"} 🎯</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Voici tes besoins quotidiens</p>
-      </div>
-      {genError && (
-        <div className="mb-4 rounded-xl px-3 py-2 text-xs font-medium text-center"
-          style={{ background: "color-mix(in oklab, var(--warning) 14%, transparent)", color: "var(--warning)" }}>
-          <AlertTriangle className="inline h-3 w-3 mr-1" />{genError}
-        </div>
-      )}
-      <div className="-mx-4 overflow-x-auto no-scrollbar px-4">
-        <div className="flex gap-3">
-          {[
-            { label: "Calories", value: formatKcal(plan.macros.kcal), unit: "kcal", color: "var(--accent)" },
-            { label: "Protéines", value: String(plan.macros.protein), unit: "g", color: "var(--info)" },
-            { label: "Glucides", value: String(plan.macros.carbs), unit: "g", color: "var(--orange)" },
-            { label: "Lipides", value: String(plan.macros.fat), unit: "g", color: "var(--warning)" },
-          ].map((m) => (
-            <div key={m.label} className="w-36 shrink-0 rounded-2xl border border-border bg-surface-1 p-4">
-              <p className="text-xs text-muted-foreground">{m.label}</p>
-              <p className="mt-1 font-mono text-2xl font-bold" style={{ color: m.color }}>{m.value}</p>
-              <p className="text-xs text-muted-foreground">{m.unit}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="mt-4 rounded-2xl border border-border bg-surface-1 p-4">
-        <div className="flex items-center gap-2">
-          <span className="grid h-7 w-7 place-items-center rounded-full grad-accent text-background"><Sparkles className="h-3.5 w-3.5" /></span>
-          <span className="text-xs font-semibold">Coach FitAI</span>
-        </div>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{plan.coachSummary}</p>
-      </div>
-      <div className="mt-4 rounded-2xl border border-border bg-surface-1 p-4">
-        <p className="text-xs text-muted-foreground">Progression estimée</p>
-        <div className="mt-2 flex items-center justify-between">
-          <span className="font-mono text-lg font-bold">{form.weight || "?"} kg</span>
-          <ArrowRight className="h-4 w-4 text-muted-foreground" />
-          <span className="font-mono text-lg font-bold" style={{ color: "var(--accent)" }}>{form.goalWeight || "?"} kg</span>
-        </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-3">
-          <div className="h-full grad-accent" style={{ width: `${Math.min(Math.abs(targetDiff) / Math.max(form.weight || 1, 1) * 100, 100)}%` }} />
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">{diffLabel} kg · {form.weeks} semaines</p>
+    <div className="animate-slide-up text-center space-y-4">
+      <h1 className="text-3xl font-bold">Ton plan est prêt, {form.name || "Sportif"} 🎯</h1>
+      {genError && <p className="text-sm" style={{ color: "var(--warning)" }}><AlertTriangle className="inline h-3 w-3 mr-1" />{genError}</p>}
+      <div className="flex gap-3 overflow-x-auto -mx-4 px-4 no-scrollbar">
+        {[
+          { label: "Calories", value: plan.macros.kcal.toLocaleString(), unit: "kcal", color: "var(--accent)" },
+          { label: "Protéines", value: String(plan.macros.protein), unit: "g", color: "var(--info)" },
+          { label: "Glucides", value: String(plan.macros.carbs), unit: "g", color: "var(--orange)" },
+          { label: "Lipides", value: String(plan.macros.fat), unit: "g", color: "var(--warning)" },
+        ].map((m) => (
+          <div key={m.label} className="w-36 shrink-0 rounded-2xl border border-border bg-surface-1 p-4">
+            <p className="text-xs text-muted-foreground">{m.label}</p>
+            <p className="mt-1 font-mono text-2xl font-bold" style={{ color: m.color }}>{m.value}</p>
+            <p className="text-xs text-muted-foreground">{m.unit}</p>
+          </div>
+        ))}
       </div>
       <button type="button" onClick={onFinish} disabled={saving}
-        className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl py-4 text-base font-semibold grad-accent text-background disabled:opacity-50">
-        {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
-        {saving ? "Sauvegarde..." : "C'est parti !"}
+        className="w-full rounded-xl py-4 text-base font-semibold grad-accent text-background disabled:opacity-50">
+        {saving ? <Loader2 className="h-5 w-5 animate-spin inline" /> : <Check className="h-5 w-5 inline" />}
+        {saving ? " Sauvegarde..." : " C'est parti !"}
       </button>
-    </>
+    </div>
   );
 }
