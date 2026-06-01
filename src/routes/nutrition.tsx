@@ -456,7 +456,8 @@ function JournalView({
 
     try {
       // Supprimer les anciens aliments générés par l'IA aujourd'hui
-      for (const item of logs) {
+      const currentLogs = Array.isArray(logs) ? logs : [];
+      for (const item of currentLogs) {
         if (["ai_scan", "ai_plan"].includes(item.source || "")) {
           deleteFood(item.id);
         }
