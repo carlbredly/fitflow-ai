@@ -105,6 +105,7 @@ CREATE TABLE IF NOT EXISTS weekly_checkins (
 );
 
 ALTER TABLE weekly_checkins ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Checkins: user owns" ON weekly_checkins;
 CREATE POLICY "Checkins: user owns" ON weekly_checkins FOR ALL USING (auth.uid() = user_id);
 
 CREATE INDEX IF NOT EXISTS idx_checkins_user_date ON weekly_checkins(user_id, checkin_date);
