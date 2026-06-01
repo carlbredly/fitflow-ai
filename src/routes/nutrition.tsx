@@ -9,6 +9,7 @@ import { CalorieRing } from "@/components/app/CalorieRing";
 import { useAuth } from "@/hooks/useAuth";
 import { useFoodLogs } from "@/hooks/useFoodLog";
 import { useProfile } from "@/hooks/useProfile";
+import { supabase } from "@/lib/supabase";
 import type { MealType } from "@/types/database.types";
 
 export const Route = createFileRoute("/nutrition")({
@@ -344,7 +345,7 @@ function Nutrition() {
   const { user } = useAuth();
   const userId = user?.id;
   const { calculatedMacros, isLoading: profileLoading, profile: dbProfile } = useProfile(userId);
-  const { logs, totals, groupedByMeal, mealTotals, addFood, deleteFood, isAdding, isLoading } = useFoodLogs(userId);
+  const { totals, groupedByMeal, mealTotals, addFood, isAdding, isLoading } = useFoodLogs(userId);
   const macros = calculatedMacros ?? { kcal: 2000, protein: 150, carbs: 200, fat: 65 };
 
   if (isLoading || profileLoading) {
@@ -455,12 +456,14 @@ function JournalView({
     setAiStatus(null);
 
     try {
-      // Supprimer les anciens aliments générés par l'IA aujourd'hui
-      const currentLogs = Array.isArray(logs) ? logs : [];
-      for (const item of currentLogs) {
-        if (["ai_scan", "ai_plan"].includes(item.source || "")) {
-          deleteFood(item.id);
-        }
+      // Delete all previously AI-generated meals for today
+      if (userId) {
+        await supabase
+          .from("food_logs")
+          .delete()
+          .eq("user_id", userId)
+          .eq("logged_date", new Date().toISOString().split("T")[0])
+          .eq("source", "ai_scan");
       }
 
       const goal = String((dbProfile as Record<string, unknown>).goal ?? "maintain");
@@ -500,7 +503,7 @@ function JournalView({
       setAiLoading(false);
       setTimeout(() => setAiStatus(null), 5000);
     }
-  }, [dbProfile, macros, addFood, logs, deleteFood]);
+  }, [dbProfile, macros, addFood, userId]);
 
   return (
     <>
