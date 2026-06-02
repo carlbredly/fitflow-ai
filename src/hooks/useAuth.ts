@@ -1,12 +1,12 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import type { User, AuthError, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/auth.store";
 
-const isBrowser = typeof window !== "undefined";
-
 function getOrigin(): string {
-  if (!isBrowser) return "http://localhost:5173";
+  if (typeof window === "undefined") return "http://localhost:3000";
   return window.location.origin;
 }
 
@@ -16,7 +16,7 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isBrowser) { setLoading(false); return; }
+    if (typeof window === "undefined") { setLoading(false); return; }
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
@@ -51,10 +51,7 @@ export function useAuth() {
   const signInWithGoogle = async () => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo: `${getOrigin()}/`,
-        queryParams: { access_type: "offline", prompt: "consent" },
-      },
+      options: { redirectTo: `${getOrigin()}/`, queryParams: { access_type: "offline", prompt: "consent" } },
     });
     return { data, error: error as AuthError | null };
   };

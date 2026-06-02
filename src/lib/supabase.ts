@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = (typeof import.meta !== "undefined" ? import.meta.env?.VITE_SUPABASE_URL : undefined) ?? "";
-const supabaseAnonKey = (typeof import.meta !== "undefined" ? import.meta.env?.VITE_SUPABASE_ANON_KEY : undefined) ?? "";
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 const isBrowser = typeof window !== "undefined";
 
 export const supabase = createClient(supabaseUrl || "https://placeholder.supabase.co", supabaseAnonKey || "placeholder", {
@@ -11,10 +11,6 @@ export const supabase = createClient(supabaseUrl || "https://placeholder.supabas
     detectSessionInUrl: isBrowser,
     storage: isBrowser
       ? localStorage
-      : {
-          getItem: () => null,
-          setItem: () => {},
-          removeItem: () => {},
-        },
+      : { getItem: () => null, setItem: () => {}, removeItem: () => {} },
   },
 });

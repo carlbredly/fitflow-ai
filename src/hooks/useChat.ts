@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { chatWithCoach } from "@/lib/deepseek";
+import { askCoach } from "@/lib/ai-service";
 import type { ChatMessage } from "@/types/database.types";
 
 interface ProfileForAI {
@@ -67,16 +67,9 @@ export function useChat(
         content: m.content,
       }));
 
-      const reply = await chatWithCoach(
+      const reply = await askCoach(
         apiMessages,
-        profile ?? {
-          name: "Utilisateur",
-          age: null,
-          weight_kg: null,
-          height_cm: null,
-          goal: null,
-          mode: null,
-        },
+        (profile ?? { name: "Utilisateur" }) as any,
         todayStats,
       );
 
