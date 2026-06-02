@@ -1,294 +1,254 @@
-# ⚡ FitAI Coach
+# FitAI Coach
 
-> Coach fitness & nutrition IA personnalisé — planification, suivi et optimisation en temps réel.
-
----
-
-## 📋 Table des matières
-
-- [Fonctionnalités](#-fonctionnalités)
-- [Stack technique](#-stack-technique)
-- [Architecture](#-architecture)
-- [Installation](#-installation)
-- [Variables d'environnement](#-variables-denvironnement)
-- [Base de données](#-base-de-données)
-- [Démarrage](#-démarrage)
-- [API Backend](#-api-backend)
-- [Structure du projet](#-structure-du-projet)
+Application web de coaching fitness et nutrition assistée par intelligence artificielle. FitAI Coach accompagne l'utilisateur de l'onboarding à la progression quotidienne : macros personnalisées, programme sportif, journal alimentaire, statistiques et assistant conversationnel.
 
 ---
 
-## ⚡ Fonctionnalités
+## Sommaire
 
-### 🔐 Authentification
-- Email / mot de passe
-- Google OAuth
-- Création automatique de profil via trigger Supabase
-- Route guard — redirection automatique vers `/login` si non authentifié
-
-### 🎯 Onboarding intelligent
-- 4 étapes : infos personnelles → objectif & mode → durée & équipement → plan généré
-- Calcul BMR / TDEE / Macros via formule Mifflin-St Jeor
-- **Génération IA** (DeepSeek) du plan complet : macros + programme sportif
-- Sauvegarde automatique dans Supabase (`profiles` + `workout_sessions`)
-
-### 🏠 Dashboard
-- Anneau calorique animé (SVG)
-- Macros du jour avec barres de progression
-- Aperçu de la séance du jour
-- Derniers repas enregistrés
-- Poids actuel vs objectif, jours restants
-
-### 🍽️ Nutrition
-- **Journal** : repas groupés par type (petit-déj, déjeuner, dîner, collation)
-- **Ajout manuel** : formulaire inline avec nom, quantité, kcal, macros
-- **Scanner IA** : photo → DeepSeek Vision → identification des aliments → sliders de portion → ajout au journal
-- **Recherche** : base d'aliments avec ajout en un clic
-- **✨ Plan repas IA** : DeepSeek génère un plan du jour adapté à tes macros cibles
-
-### 💪 Workout
-- Programme généré par IA lors de l'onboarding, sauvegardé dans Supabase
-- Chargement automatique de la séance du jour (pas de régénération)
-- Checkboxes persistées (état sauvegardé)
-- Mode séance active : timer, navigation entre exercices, compteur de séries
-
-### 📊 Progress
-- Graphique de poids (Recharts LineChart) avec courbe de tendance
-- Graphique calories 7 jours (BarChart)
-- Log poids quotidien
-- **Check-in hebdomadaire** avec Adaptive Progression Engine
-
-### 🧠 Adaptive Progression Engine
-- Analyse multi-facteurs : poids, fatigue, sommeil, performance, adhérence, motivation
-- Ajustements automatiques : calories, macros, volume, intensité, repos
-- Détection de stagnation, surentraînement, décharge
-- Résultats sauvegardés dans `weekly_checkins`
-
-### 🤖 Coach IA (Chat)
-- DeepSeek Chat avec contexte utilisateur injecté (profil, macros, stats du jour)
-- Suggestions rapides : "Ma journée", "Plan repas", "Suppléments", "Exercices"
-- Conversation persistée dans Supabase
-
-### 👤 Profil
-- Édition du nom inline
-- Cibles quotidiennes affichées
-- Modales centrées : Notifications (toggles), Confidentialité (RGPD), Aide & Support (lien chat IA, email, version)
-- Déconnexion
+- [Aperçu](#aperçu)
+- [Fonctionnalités](#fonctionnalités)
+- [Stack technique](#stack-technique)
+- [Prérequis](#prérequis)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Base de données](#base-de-données)
+- [Scripts disponibles](#scripts-disponibles)
+- [Routes applicatives](#routes-applicatives)
+- [API](#api)
+- [Structure du projet](#structure-du-projet)
+- [Design system](#design-system)
+- [Licence](#licence)
 
 ---
 
-## 🛠 Stack technique
+## Aperçu
 
-| Couche | Technologie |
-|---|---|
-| **Frontend** | React 19, TypeScript, TanStack Router, TanStack Query, Tailwind CSS v4, shadcn/ui |
-| **Backend** | Express.js, TypeScript, tsx |
-| **Base de données** | Supabase (PostgreSQL + Auth + RLS) |
-| **IA** | DeepSeek API (Vision + Chat) |
-| **State** | Zustand, React Query |
-| **Charts** | Recharts |
-| **Build** | Vite, Cloudflare Workers (SSR) |
-| **Lint** | ESLint, Prettier |
-
----
-
-## 🏗 Architecture
+FitAI Coach est une application **mobile-first** construite avec **Next.js 15** et **Supabase**. Les fonctionnalités IA (génération de plan, scan de repas, coach chat) s'appuient sur l'API **DeepSeek**, avec des replis locaux lorsque l'IA est indisponible.
 
 ```
-┌─────────────────────────────────────────────────┐
-│  Frontend (React + Vite + TanStack Start)       │
-│  Port: 5173 (dev) · Servi par Express (prod)    │
-├─────────────────────────────────────────────────┤
-│  Backend API (Express.js)                       │
-│  Port: 5000                                     │
-│  /api/auth · /api/profile · /api/food-logs ...   │
-├─────────────────────────────────────────────────┤
-│  Supabase                                       │
-│  Auth · PostgreSQL · RLS · Row-Level Security   │
-├─────────────────────────────────────────────────┤
-│  DeepSeek API                                   │
-│  Vision (scan repas) · Chat (coach IA)          │
-│  Génération programme sportif                   │
-└─────────────────────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│  Client — Next.js (App Router, React 19) │
+│  Pages · composants · hooks · stores     │
+├──────────────────────────────────────────┤
+│  API — Route Handlers (`/api/*`)         │
+│  Auth JWT · logique métier · appels IA   │
+├──────────────────────────────────────────┤
+│  Supabase — Auth · PostgreSQL · RLS      │
+├──────────────────────────────────────────┤
+│  DeepSeek — Chat · Vision · génération   │
+└──────────────────────────────────────────┘
 ```
 
 ---
 
-## 📦 Installation
+## Fonctionnalités
+
+| Module | Description |
+|--------|-------------|
+| **Authentification** | Inscription et connexion par e-mail ; OAuth Google ; garde de routes (`AuthRouter`) ; profil créé automatiquement à l'inscription. |
+| **Onboarding** | Parcours en 4 étapes (profil, objectif, équipement, validation) ; calcul BMR / TDEE / macros (Mifflin-St Jeor) ; génération du programme sportif (IA + repli local) ; planification des séances sur toute la durée du programme. |
+| **Accueil** | Synthèse calorique et macros du jour ; séance du jour ; derniers repas ; indicateurs poids et progression. |
+| **Nutrition** | Journal par repas ; saisie manuelle ; scan photo (vision IA) ; recherche d'aliments ; plan repas IA. |
+| **Entraînement** | Programme hebdomadaire issu de l'onboarding ; séance du jour ; suivi des exercices ; mode séance avec minuteur. |
+| **Progrès** | Courbes de poids et calories (7 jours) ; enregistrement du poids ; check-in hebdomadaire avec ajustements suggérés. |
+| **Coach IA** | Chat contextuel (profil, macros, stats du jour) ; suggestions rapides. |
+| **Profil** | Édition du profil, cibles quotidiennes, notifications, confidentialité, déconnexion. |
+
+---
+
+## Stack technique
+
+| Domaine | Technologies |
+|---------|----------------|
+| Framework | Next.js 15, React 19, TypeScript |
+| UI | Tailwind CSS v4, Radix UI, shadcn/ui, Lucide |
+| Données | Supabase (PostgreSQL, Auth, RLS) |
+| État & requêtes | TanStack Query, Zustand |
+| Visualisation | Recharts |
+| IA | DeepSeek API (chat, vision, génération de plans) |
+| Qualité | ESLint, `eslint-config-next` |
+
+---
+
+## Prérequis
+
+- **Node.js** 20 ou supérieur
+- **npm** 10 ou supérieur
+- Un projet **Supabase** (URL, clé anon, clé service role)
+- Une clé **DeepSeek** (recommandée pour les fonctions IA ; l'application fonctionne en mode dégradé sans elle)
+
+---
+
+## Installation
 
 ```bash
-# Cloner le projet
-git clone <repo-url>
+git clone <url-du-depot>
 cd fitflow-ai
-
-# Installer les dépendances
 npm install
-
-# Copier les variables d'environnement
-cp .env.example .env.local
-
-# Éditer .env.local avec tes clés Supabase et DeepSeek
 ```
+
+Créez un fichier `.env.local` à la racine (voir [Configuration](#configuration)), initialisez la base Supabase (voir [Base de données](#base-de-données)), puis lancez le serveur de développement.
 
 ---
 
-## 🔑 Variables d'environnement
+## Configuration
 
 Fichier `.env.local` :
 
+| Variable | Obligatoire | Description |
+|----------|:-----------:|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Oui | URL du projet Supabase |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Oui | Clé publique (anon) Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | Oui | Clé service role (routes API côté serveur uniquement) |
+| `DEEPSEEK_API_KEY` | Non | Clé API DeepSeek pour scan, chat et génération de plans |
+
+Exemple :
+
 ```env
-VITE_SUPABASE_URL=https://xxxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJ...
-VITE_SUPABASE_SERVICE_ROLE_KEY=eyJ...
-VITE_DEEPSEEK_API_KEY=sk-...
-VITE_APP_URL=http://localhost:5173
-VITE_API_URL=http://localhost:5000
+NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+DEEPSEEK_API_KEY=sk-...
 ```
+
+### OAuth Google (optionnel)
+
+1. Créer un client OAuth Web dans la [Google Cloud Console](https://console.cloud.google.com).
+2. Définir l'URI de redirection : `https://<project-ref>.supabase.co/auth/v1/callback`.
+3. Activer le fournisseur Google dans Supabase → **Authentication** → **Providers**.
+4. Ajouter `http://localhost:3000/**` aux **Redirect URLs** du projet Supabase.
 
 ---
 
-## 🗄️ Base de données
+## Base de données
 
-Exécute le fichier `supabase_schema.sql` dans Supabase > SQL Editor. Il crée :
+Exécuter le script `supabase_schema.sql` dans **Supabase → SQL Editor**. Il provisionne les tables suivantes :
 
-| Table | Description |
-|---|---|
-| `profiles` | Profil utilisateur (objectif, mode, poids, macros) |
-| `food_logs` | Journal alimentaire |
+| Table | Rôle |
+|-------|------|
+| `profiles` | Profil, objectifs, équipement, dates de programme |
+| `food_logs` | Journal alimentaire quotidien |
 | `weight_logs` | Historique de poids |
-| `workout_sessions` | Programme sportif (séances + exercices en JSONB) |
-| `chat_messages` | Conversations avec le Coach IA |
-| `daily_targets` | Cibles macros quotidiennes |
-| `weekly_checkins` | Check-ins hebdomadaires (Adaptive Engine) |
+| `workout_sessions` | Séances et exercices (JSONB) |
+| `chat_messages` | Historique du coach IA |
+| `daily_targets` | Objectifs macros par jour |
+| `weekly_checkins` | Check-ins et ajustements hebdomadaires |
 
-**RLS activé sur toutes les tables** — chaque utilisateur voit uniquement ses données.
-
-**Trigger `handle_new_user()`** — crée automatiquement un profil à l'inscription.
-
-### Configuration Supabase OAuth (Google)
-
-1. [Google Cloud Console](https://console.cloud.google.com) → Créer un OAuth client ID (Web)
-2. **Redirect URI** : `https://xxxxx.supabase.co/auth/v1/callback`
-3. Supabase > Authentication > Providers > Google → Coller Client ID + Secret
-4. **URL Configuration** : ajouter `http://localhost:5173/**` aux Redirect URLs
+Le schéma active le **Row Level Security (RLS)** sur toutes les tables et le trigger `handle_new_user()` pour la création automatique du profil à l'inscription.
 
 ---
 
-## 🚀 Démarrage
+## Scripts disponibles
 
-```bash
-# Développement (frontend + API)
-npm run dev
-
-# API uniquement
-npm run api
-
-# Production
-npm run build
-npm start        # Express sert tout sur le port 5000
-```
+| Commande | Description |
+|----------|-------------|
+| `npm run dev` | Serveur de développement sur [http://localhost:3000](http://localhost:3000) |
+| `npm run build` | Build de production |
+| `npm start` | Démarrage du serveur après build |
+| `npm run lint` | Analyse ESLint |
 
 ---
 
-## 🔌 API Backend
+## Routes applicatives
 
-| Route | Méthode | Auth | Description |
-|---|---|---|---|
-| `/api/auth/register` | POST | ❌ | Inscription email |
-| `/api/auth/login` | POST | ❌ | Connexion email |
-| `/api/auth/me` | GET | ✅ | Profil connecté |
-| `/api/profile` | GET | ✅ | Profil utilisateur |
-| `/api/profile/onboarding` | POST | ✅ | Sauvegarde onboarding |
-| `/api/food-logs` | GET/POST | ✅ | Journal alimentaire |
-| `/api/food-logs/:id` | DELETE | ✅ | Supprimer un aliment |
-| `/api/weight-logs` | GET/POST | ✅ | Poids |
-| `/api/workout-sessions` | GET/POST | ✅ | Séances |
-| `/api/dashboard/stats` | GET | ✅ | Stats dashboard |
-| `/api/ai/scan-food` | POST | ✅ | Scanner repas (Vision) |
-| `/api/ai/generate-plan` | POST | ✅ | Générer plan IA |
-| `/api/ai/chat` | POST | ✅ | Chat Coach IA |
-| `/api/ai/chat/stream` | POST | ✅ | Chat streaming (SSE) |
+| Route | Accès | Description |
+|-------|-------|-------------|
+| `/login` | Public | Connexion et inscription |
+| `/onboarding` | Authentifié | Configuration initiale du profil |
+| `/` | Authentifié | Tableau de bord |
+| `/nutrition` | Authentifié | Journal, scanner, recherche |
+| `/workout` | Authentifié | Programme et séance du jour |
+| `/progress` | Authentifié | Statistiques et check-in |
+| `/chat` | Authentifié | Coach IA |
+| `/profile` | Authentifié | Paramètres et compte |
+
+Les utilisateurs non connectés sont redirigés vers `/login`. Un profil incomplet déclenche une redirection vers `/onboarding`.
 
 ---
 
-## 📁 Structure du projet
+## API
+
+Les routes API sont exposées sous `/api/*`. Les endpoints protégés attendent un en-tête `Authorization: Bearer <access_token>` (session Supabase).
+
+| Endpoint | Méthodes | Description |
+|----------|----------|-------------|
+| `/api/auth/register` | POST | Inscription |
+| `/api/auth/login` | POST | Connexion |
+| `/api/auth/me` | GET | Utilisateur courant |
+| `/api/profile` | GET | Profil |
+| `/api/onboarding` | POST | Finalisation onboarding |
+| `/api/food-logs` | GET, POST | Journal alimentaire |
+| `/api/food-logs/[id]` | DELETE | Suppression d'une entrée |
+| `/api/weight-logs` | GET, POST | Poids |
+| `/api/workout-sessions` | GET, POST | Séances |
+| `/api/dashboard/stats` | GET | Statistiques tableau de bord |
+| `/api/ai/generate-plan` | POST | Plan macros + programme sportif |
+| `/api/ai/meal-plan` | POST | Plan repas du jour |
+| `/api/ai/scan-food` | POST | Analyse photo de repas |
+| `/api/ai/search-food` | POST | Recherche d'aliments |
+| `/api/ai/chat` | POST | Message coach IA |
+| `/api/ai/chat/stream` | POST | Chat en streaming (SSE) |
+| `/api/health` | GET | Santé de l'API |
+
+---
+
+## Structure du projet
 
 ```
 fitflow-ai/
-├── .env.local                    # Variables d'environnement
-├── supabase_schema.sql           # SQL à exécuter dans Supabase
-├── package.json                  # Scripts + dépendances
-├── vite.config.ts                # Configuration Vite + TanStack
-│
-├── src/
-│   ├── server/                   # API Express
-│   │   ├── app.ts                # Config Express + routes
-│   │   ├── index.ts              # Entry point (port 5000)
-│   │   ├── config/env.ts         # Variables d'environnement serveur
-│   │   ├── routes/               # Routes API (auth, profile, food, ai...)
-│   │   ├── controllers/          # Contrôleurs
-│   │   ├── services/             # Logique métier
-│   │   ├── middleware/           # Auth, error, validation, rate-limit
-│   │   └── lib/                  # Supabase, DeepSeek, calculations
-│   │
-│   ├── routes/                   # Pages (TanStack Router)
-│   │   ├── __root.tsx            # Layout racine + auth guard
-│   │   ├── index.tsx             # Dashboard
-│   │   ├── login.tsx             # Connexion / Inscription
-│   │   ├── onboarding.tsx        # Onboarding 4 étapes
-│   │   ├── nutrition.tsx         # Journal + Scanner + Recherche
-│   │   ├── workout.tsx           # Programme sportif
-│   │   ├── progress.tsx          # Stats + Check-in + Adaptive Engine
-│   │   ├── profile.tsx           # Profil + Paramètres
-│   │   └── chat.tsx              # Coach IA
-│   │
-│   ├── hooks/                    # React hooks
-│   │   ├── useAuth.ts
-│   │   ├── useProfile.ts
-│   │   ├── useFoodLog.ts
-│   │   ├── useWorkout.ts
-│   │   ├── useDashboard.ts
-│   │   └── useChat.ts
-│   │
-│   ├── lib/                      # Bibliothèques partagées
-│   │   ├── supabase.ts           # Client Supabase
-│   │   ├── deepseek.ts           # Client DeepSeek
-│   │   ├── ai-service.ts         # Service IA (plan, chat, scan)
-│   │   ├── adaptive-engine.ts    # Moteur de progression adaptative
-│   │   └── calculations.ts       # BMR, TDEE, macros
-│   │
-│   ├── components/               # Composants UI
-│   │   ├── ui/                   # shadcn/ui
-│   │   └── app/                  # AppShell, BottomNav, CalorieRing, MacroBar
-│   │
-│   ├── services/                 # API client + stores
-│   │   ├── api.ts                # Fetch wrapper
-│   │   ├── auth.service.ts
-│   │   ├── dashboard.service.ts
-│   │   └── food.service.ts
-│   │
-│   ├── stores/                   # Zustand
-│   │   ├── auth.store.ts
-│   │   └── dashboard.store.ts
-│   │
-│   ├── types/                    # Types TypeScript
-│   │   └── database.types.ts
-│   │
-│   └── styles.css                # Tailwind + thème dark gym
+├── public/                 # Assets statiques, PWA
+├── supabase_schema.sql     # Schéma PostgreSQL
+├── next.config.ts
+├── package.json
+└── src/
+    ├── app/                # Pages et Route Handlers (App Router)
+    │   ├── api/            # Endpoints REST
+    │   ├── login/
+    │   ├── onboarding/
+    │   ├── nutrition/
+    │   ├── workout/
+    │   ├── progress/
+    │   ├── profile/
+    │   ├── chat/
+    │   ├── layout.tsx
+    │   ├── page.tsx        # Accueil
+    │   └── globals.css
+    ├── components/
+    │   ├── app/            # Shell, navigation, composants métier
+    │   └── ui/             # Primitives shadcn/ui
+    ├── hooks/              # Logique client (auth, profil, nutrition…)
+    ├── lib/                # Supabase, IA, calculs, plans sportifs
+    ├── stores/             # État global (Zustand)
+    └── types/              # Types TypeScript partagés
 ```
 
----
+Fichiers métier notables :
 
-## 🎨 Design System
-
-- **Theme** : Dark gym — fond noir profond `#0D0D0D`
-- **Accent** : Vert électrique `#00E5A0`
-- **Secondaire** : Orange performance `#FF6B35`
-- **Typographie** : Syne (display), DM Sans (body), JetBrains Mono (data)
-- **Mobile-first** : 390px → 768px → 1280px
+- `src/lib/calculations.ts` — BMR, TDEE, répartition des macros
+- `src/lib/workout-plan.ts` — Génération et planification des séances
+- `src/lib/ai-service.ts` — Client des fonctionnalités IA
+- `src/components/app/AuthRouter.tsx` — Protection des routes
 
 ---
 
-## 📄 Licence
+## Design system
 
-MIT
+Interface sombre orientée performance, pensée pour mobile (cible ~390 px).
+
+| Élément | Valeur |
+|---------|--------|
+| Fond principal | `#0D0D0D` (thème dark gym) |
+| Accent | Vert `#00E5A0` |
+| Secondaire | Orange `#FF6B35` |
+| Display | Syne |
+| Corps | DM Sans |
+| Données / chiffres | JetBrains Mono |
+
+Les utilitaires globaux (`glass`, `grad-accent`, animations) sont définis dans `src/app/globals.css`.
+
+---
+
+## Licence
+
+MIT — voir le dépôt pour les conditions d'utilisation.

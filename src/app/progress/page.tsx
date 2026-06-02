@@ -5,7 +5,13 @@ import { useQuery } from "@tanstack/react-query";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, ReferenceLine, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { TrendingDown, Flame, Dumbbell, Scale, Sparkles, ClipboardCheck, Loader2, Activity, BedDouble, Zap, Target, CheckCircle2, XCircle } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app/AppShell";
+import { SegmentTabs } from "@/components/app/SegmentTabs";
+import { PageLoading } from "@/components/app/PageLoading";
+import { WeeklyReportPanel } from "@/components/app/WeeklyReportPanel";
+import { ShareProgressCard } from "@/components/app/ShareProgressCard";
 import { useAuth } from "@/hooks/useAuth";
+import { useGamification } from "@/hooks/useGamification";
+import { useWeeklyReport } from "@/hooks/useWeeklyReport";
 import { useWeightLogs } from "@/hooks/useWorkout";
 import { useWeeklyCalories } from "@/hooks/useFoodLog";
 import { useProfile } from "@/hooks/useProfile";
@@ -22,7 +28,10 @@ export default function ProgressPage() {
   const { profile: dbProfile, calculatedMacros } = useProfile(userId);
   const { weightHistory, logWeight, isLogging } = useWeightLogs(userId);
   const targetKcal = calculatedMacros?.kcal ?? 2000;
+  const targetProtein = calculatedMacros?.protein ?? 150;
   const { data: kcalWeek = [] } = useWeeklyCalories(userId, targetKcal);
+  const { stats: weekStats } = useGamification(userId, targetKcal, targetProtein);
+  const { report, isGenerating, generate } = useWeeklyReport(userId, weekStats);
 
   const chartData = weightHistory.map((w) => ({ date: w.logged_date?.slice(5) ?? "", w: w.weight_kg }));
   const currentWeight = weightHistory.length > 0 ? weightHistory[weightHistory.length - 1].weight_kg : dbProfile?.weight_kg ?? 0;
@@ -35,27 +44,36 @@ export default function ProgressPage() {
     if (!isNaN(val) && userId) { logWeight({ weight_kg: val }); setWeightInput(""); }
   };
 
-  if (!user) {
-    return (<AppShell header={<PageHeader title="Progress" subtitle="Connecte-toi" />}><div className="flex flex-col items-center justify-center py-20 gap-3"><Sparkles className="h-8 w-8 text-muted-foreground" /><p className="text-sm text-muted-foreground">Connecte-toi pour voir ta progression</p></div></AppShell>);
+  if (!user || !dbProfile) {
+    return <PageLoading title="Progrès" />;
   }
 
+  const weightTrend = parseFloat(weightDiff);
+  const trendUp = weightTrend > 0;
+
   return (
-    <AppShell header={<PageHeader title="Progress" subtitle={tab === "Check-in" ? "Check-in hebdomadaire" : `${avgKcal} kcal/j moy`} />}>
-      <div className="mb-4 flex gap-1 rounded-full bg-surface-1 p-1">
-        {tabs.map((t) => (
-          <button key={t} onClick={() => setTab(t)} className="flex-1 rounded-full px-3 py-2 text-sm font-medium transition"
-            style={{ background: tab === t ? "var(--accent)" : "transparent", color: tab === t ? "var(--accent-foreground)" : "var(--muted-foreground)" }}>
-            {t === "Check-in" && <ClipboardCheck className="inline h-3.5 w-3.5 mr-1" />}{t}
-          </button>
-        ))}
-      </div>
+    <AppShell header={<PageHeader title="Progrès" subtitle={tab === "Check-in" ? "Check-in hebdomadaire" : `${avgKcal} kcal/j en moyenne`} />}>
+      <SegmentTabs
+        tabs={tabs}
+        value={tab}
+        onChange={setTab}
+        className="mb-4"
+        renderLabel={(t) => (
+          <>
+            {t === "Check-in" && <ClipboardCheck className="inline h-3.5 w-3.5 mr-1" />}
+            {t}
+          </>
+        )}
+      />
 
       {tab === "Stats" && (
         <>
           <section className="rounded-2xl border border-border bg-surface-1 p-4">
             <div className="flex items-baseline justify-between">
               <div><p className="text-xs text-muted-foreground">Poids actuel</p><p className="font-mono text-3xl font-bold">{currentWeight}<span className="ml-1 text-sm text-muted-foreground">kg</span></p></div>
-              <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-mono" style={{ background: "color-mix(in oklab, var(--accent) 14%, transparent)", color: "var(--accent)" }}><TrendingDown className="h-3 w-3" /> {weightDiff} kg</span>
+              <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-mono" style={{ background: "color-mix(in oklab, var(--accent) 14%, transparent)", color: trendUp ? "var(--orange)" : "var(--accent)" }}>
+                <TrendingDown className={`h-3 w-3 ${trendUp ? "rotate-180" : ""}`} /> {weightDiff} kg
+              </span>
             </div>
             <div className="mt-3 h-44">
               <ResponsiveContainer width="100%" height="100%">
@@ -90,6 +108,26 @@ export default function ProgressPage() {
               </ResponsiveContainer>
             </div>
           </section>
+
+          <div className="mt-4 space-y-4">
+            <WeeklyReportPanel
+              report={report}
+              isGenerating={isGenerating}
+              onGenerate={() => generate()}
+              hasStats={!!weekStats}
+            />
+            {weekStats && (
+              <ShareProgressCard
+                name={dbProfile.name}
+                stats={weekStats}
+                programDay={
+                  dbProfile.program_start_date
+                    ? Math.floor((Date.now() - new Date(dbProfile.program_start_date).getTime()) / 86400000) + 1
+                    : undefined
+                }
+              />
+            )}
+          </div>
         </>
       )}
 

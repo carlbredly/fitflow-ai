@@ -82,6 +82,7 @@
 }
 
 @layer utilities {
+  .font-display { font-family: var(--font-display); }
   .glass { background: color-mix(in oklab, var(--surface-1) 80%, transparent); backdrop-filter: blur(12px); }
   .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 16px); }
   .grad-hero {

@@ -1,19 +1,22 @@
 {
   "name": "FitAI Coach",
   "short_name": "FitAI",
-  "description": "Coach fitness & nutrition IA personnalisé",
+  "description": "Coach fitness et nutrition IA personnalisé",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#0D0D0D",
   "theme_color": "#00E5A0",
   "lang": "fr",
-  "categories": ["fitness", "health", "nutrition"],
+  "dir": "ltr",
+  "categories": ["fitness", "health", "nutrition", "lifestyle"],
   "icons": [
     {
       "src": "/icon-180.png",
       "sizes": "180x180",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/icon-192.svg",
@@ -26,6 +29,18 @@
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nutrition",
+      "url": "/nutrition",
+      "description": "Journal alimentaire"
+    },
+    {
+      "name": "Sport",
+      "url": "/workout",
+      "description": "Séance du jour"
     }
   ]
 }

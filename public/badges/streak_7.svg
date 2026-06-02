@@ -1,0 +1,70 @@
+<svg viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="ring" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFD700"/>
+      <stop offset="30%" stop-color="#FFEC80"/>
+      <stop offset="60%" stop-color="#FFD700"/>
+      <stop offset="100%" stop-color="#B8860B"/>
+    </linearGradient>
+    <radialGradient id="bg" cx="50%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#2A2814"/>
+      <stop offset="60%" stop-color="#1A1A0A"/>
+      <stop offset="100%" stop-color="#0D0D0D"/>
+    </radialGradient>
+    <linearGradient id="ribbon" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#B8860B"/>
+      <stop offset="50%" stop-color="#FFD700"/>
+      <stop offset="100%" stop-color="#B8860B"/>
+    </linearGradient>
+    <linearGradient id="iconGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFEC80"/>
+      <stop offset="100%" stop-color="#FFD700"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <circle cx="100" cy="95" r="86" fill="none" stroke="url(#ring)" stroke-width="5" filter="url(#shadow)"/>
+  <circle cx="100" cy="95" r="79" fill="none" stroke="url(#ring)" stroke-width="1.5" opacity="0.4"/>
+  <circle cx="100" cy="95" r="78" fill="url(#bg)"/>
+
+  <!-- Crown decorative top -->
+  <g fill="url(#iconGrad)" opacity="0.12">
+    <polygon points="100,16 95,26 90,20 87,30 80,24 80,34 100,38 120,34 120,24 113,30 110,20 105,26"/>
+  </g>
+
+  <g fill="url(#ring)" opacity="0.3">
+    <circle cx="100" cy="19" r="2"/><circle cx="140" cy="23" r="2"/>
+    <circle cx="171" cy="50" r="2"/><circle cx="177" cy="95" r="2"/>
+    <circle cx="171" cy="140" r="2"/><circle cx="140" cy="167" r="2"/>
+    <circle cx="100" cy="171" r="2"/><circle cx="60" cy="167" r="2"/>
+    <circle cx="29" cy="140" r="2"/><circle cx="23" cy="95" r="2"/>
+    <circle cx="29" cy="50" r="2"/><circle cx="60" cy="23" r="2"/>
+  </g>
+
+  <!-- Lightning bolt icon -->
+  <g filter="url(#glow)">
+    <path d="M112 48 L88 92 L102 92 L93 126 L122 80 L108 80 L116 48Z" fill="url(#iconGrad)"/>
+    <!-- Sparkle dots -->
+    <circle cx="126" cy="52" r="2" fill="#FFEC80" opacity="0.7"/>
+    <circle cx="80" cy="118" r="1.5" fill="#FFEC80" opacity="0.5"/>
+    <circle cx="130" cy="86" r="1.5" fill="#FFEC80" opacity="0.4"/>
+  </g>
+
+  <g fill="url(#ring)" opacity="0.15">
+    <polygon points="100,32 103,40 111,40 104,45 107,53 100,48 93,53 96,45 89,40 97,40"/>
+    <polygon points="155,78 157,83 162,83 158,87 160,92 155,89 150,92 152,87 148,83 153,83"/>
+    <polygon points="45,78 47,83 52,83 48,87 50,92 45,89 40,92 42,87 38,83 43,83"/>
+  </g>
+
+  <g filter="url(#shadow)">
+    <path d="M64 175 L100 190 L136 175 L136 210 L100 198 L64 210Z" fill="url(#ribbon)"/>
+    <path d="M64 175 L100 190 L136 175" fill="none" stroke="#FFF" stroke-width="0.5" opacity="0.3"/>
+    <text x="100" y="192" text-anchor="middle" fill="#1A1A0A" font-family="Georgia,serif" font-size="8.5" font-weight="bold" letter-spacing="1">SEMAINE PARFAITE</text>
+  </g>
+</svg>

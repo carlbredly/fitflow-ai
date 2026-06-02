@@ -15,7 +15,7 @@ export function useWorkouts(userId: string | undefined) {
         .select("*")
         .eq("user_id", userId)
         .eq("session_date", today)
-        .single();
+        .maybeSingle();
       return data as WorkoutSession | null;
     },
     enabled: !!userId,

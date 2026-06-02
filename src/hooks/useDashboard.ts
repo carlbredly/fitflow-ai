@@ -14,6 +14,7 @@ export function useDashboard() {
     profile: dbProfile,
     calculatedMacros,
     isLoading: profileLoading,
+    streak,
   } = useProfile(userId);
 
   const {
@@ -48,6 +49,7 @@ export function useDashboard() {
       modeEmoji: "",
       todaySession: null,
       isLoading: profileLoading || foodLoading || workoutLoading,
+      streak: streak ?? 0,
     };
   }
 
@@ -81,7 +83,7 @@ export function useDashboard() {
     userId,
     profile: {
       name: dbProfile.name,
-      streak: 0,
+      streak,
       mode: (dbProfile.mode ?? "normal") as "normal" | "strict" | "extreme",
       day: Math.min(programDay, totalDays || 1),
       totalDays,

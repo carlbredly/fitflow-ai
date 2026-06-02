@@ -63,7 +63,7 @@ export default function ChatPage() {
   const renderContent = (content: string) => content.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>").replace(/\n/g, "<br/>");
 
   return (
-    <AppShell header={
+    <AppShell hideNav mainClassName="flex min-h-[calc(100vh-4rem)] flex-col" header={
       <header className="sticky top-0 z-30 glass border-b border-border">
         <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
           <Link href="/" className="grid h-9 w-9 place-items-center rounded-full bg-surface-2"><ArrowLeft className="h-4 w-4" /></Link>
@@ -116,7 +116,7 @@ export default function ChatPage() {
         </div>
       </div>
 
-      <div className="sticky bottom-0 -mx-4 mt-auto border-t border-border bg-background/80 px-4 py-3 backdrop-blur-lg safe-bottom">
+      <div className="sticky bottom-0 -mx-4 mt-auto border-t border-border bg-background/95 px-4 py-3 backdrop-blur-lg">
         <div className="flex items-center gap-2 rounded-2xl border border-border bg-surface-1 px-4 py-2.5">
           <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send(input)}
             placeholder="Pose ta question au coach..." className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />

@@ -21,7 +21,7 @@ export default function LoginPage() {
     try {
       const { error: authError } = mode === "login" ? await signIn(email, password) : await signUp(email, password);
       if (authError) { setError(authError.message); return; }
-      router.push("/");
+      router.replace("/");
     } catch { setError("Une erreur est survenue."); }
     finally { setLoading(false); }
   };

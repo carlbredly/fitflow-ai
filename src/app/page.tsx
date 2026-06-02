@@ -1,12 +1,16 @@
 "use client";
 
-import { Bell, Flame, Camera, Plus, Droplet, Scale, ChevronRight, CheckCircle2, Sparkles } from "lucide-react";
+import { Bell, Flame, Camera, Plus, Scale, ChevronRight, CheckCircle2, Sparkles, MessageCircle, Award } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/app/AppShell";
+import { PageLoading } from "@/components/app/PageLoading";
 import { CalorieRing } from "@/components/app/CalorieRing";
 import { MacroBar } from "@/components/app/MacroBar";
+import { WeeklyChallengesCard } from "@/components/app/WeeklyChallengesCard";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useRecentLogs } from "@/hooks/useFoodLog";
+import { useGamification } from "@/hooks/useGamification";
+import { BADGES } from "@/lib/gamification";
 
 const mealEmoji: Record<string, string> = { breakfast: "🌅", lunch: "☀️", dinner: "🌙", snack: "🥤" };
 
@@ -14,19 +18,14 @@ export default function Home() {
   const dash = useDashboard();
   const { profile, today, modeEmoji, modeLabel, todaySession, isLoading, userId } = dash;
   const { data: recentLogs } = useRecentLogs(userId, 3);
+  const { challenges, adherenceScore, foodStreak, newBadgeIds, isLoading: gamificationLoading } = useGamification(
+    userId,
+    profile?.targetKcal ?? 2000,
+    profile?.targetProtein ?? 150,
+  );
 
   if (isLoading || !profile) {
-    return (
-      <AppShell>
-        <div className="flex flex-col items-center justify-center py-20 gap-4">
-          <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-surface-2 animate-pulse-glow" style={{ color: "var(--accent)" }}>
-            <Sparkles className="h-7 w-7" />
-          </div>
-          <div className="h-4 w-32 skeleton" />
-          <div className="h-3 w-48 skeleton" />
-        </div>
-      </AppShell>
-    );
+    return <PageLoading title="Accueil" />;
   }
 
   const doneCount = todaySession?.exercises ? (Array.isArray(todaySession.exercises) ? (todaySession.exercises as Array<{ done?: boolean }>).filter((e) => e.done).length : 0) : 0;
@@ -46,12 +45,12 @@ export default function Home() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2.5 py-1 text-xs font-medium" style={{ color: "var(--orange)" }}>
-              <Flame className="h-3.5 w-3.5" /> {profile.streak}
-            </span>
-            <button className="grid h-9 w-9 place-items-center rounded-full bg-surface-2 text-muted-foreground hover:text-foreground">
+            <Link href="/profile" className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2.5 py-1 text-xs font-medium" style={{ color: "var(--orange)" }} title="Streak repas">
+              <Flame className="h-3.5 w-3.5" /> {foodStreak || profile.streak}
+            </Link>
+            <Link href="/profile" className="grid h-9 w-9 place-items-center rounded-full bg-surface-2 text-muted-foreground hover:text-foreground" title="Notifications">
               <Bell className="h-4 w-4" />
-            </button>
+            </Link>
           </div>
         </div>
       </header>
@@ -73,12 +72,33 @@ export default function Home() {
         </div>
       </section>
 
+      {newBadgeIds.length > 0 && (
+        <Link href="/profile" className="mt-4 flex items-center gap-3 rounded-2xl border border-accent/40 px-4 py-3 animate-slide-up" style={{ background: "color-mix(in oklab, var(--accent) 12%, transparent)" }}>
+          <div className="flex -space-x-2">
+            {newBadgeIds.slice(0, 3).map((id) => {
+              const badge = BADGES.find((b) => b.id === id);
+              return badge ? (
+                <img key={id} src={badge.svgPath} alt={badge.title} className="h-8 w-8 drop-shadow-[0_0_6px_rgba(255,215,0,0.4)]" />
+              ) : null;
+            })}
+          </div>
+          <p className="text-sm font-medium">Nouveau badge débloqué ! Voir mes récompenses</p>
+          <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
+        </Link>
+      )}
+
+      {!gamificationLoading && challenges.length > 0 && (
+        <div className="mt-4">
+          <WeeklyChallengesCard challenges={challenges} adherenceScore={adherenceScore} />
+        </div>
+      )}
+
       <section className="mt-4 -mx-4 overflow-x-auto no-scrollbar">
         <div className="flex gap-2 px-4">
           {[
-            { Icon: Camera, label: "Scanner", href: "/nutrition" },
+            { Icon: Camera, label: "Scanner", href: "/nutrition?tab=Scanner" },
             { Icon: Plus, label: "Ajouter", href: "/nutrition" },
-            { Icon: Droplet, label: "Eau", href: "/" },
+            { Icon: MessageCircle, label: "Coach IA", href: "/chat" },
             { Icon: Scale, label: "Poids", href: "/progress" },
           ].map(({ Icon, label, href }) => (
             <Link key={label} href={href}

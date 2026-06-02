@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Camera, Plus, Search, Sparkles, ChevronDown, Upload,
   Check, Loader2, AlertCircle, RefreshCw,
 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app/AppShell";
+import { SegmentTabs } from "@/components/app/SegmentTabs";
+import { PageLoading } from "@/components/app/PageLoading";
 import { CalorieRing } from "@/components/app/CalorieRing";
 import { useAuth } from "@/hooks/useAuth";
 import { useFoodLogs } from "@/hooks/useFoodLog";
@@ -131,35 +134,28 @@ async function searchFoodAI(query: string): Promise<Array<{ name: string; per: s
 }
 
 export default function NutritionPage() {
+  const searchParams = useSearchParams();
   const [tab, setTab] = useState<(typeof tabs)[number]>("Journal");
   const { user } = useAuth();
+
+  useEffect(() => {
+    const requested = searchParams.get("tab");
+    if (requested && tabs.includes(requested as (typeof tabs)[number])) {
+      setTab(requested as (typeof tabs)[number]);
+    }
+  }, [searchParams]);
   const userId = user?.id;
   const { calculatedMacros, isLoading: profileLoading, profile: dbProfile } = useProfile(userId);
   const { totals, groupedByMeal, mealTotals, addFood, isAdding, isLoading, deleteAiMeals } = useFoodLogs(userId);
   const macros = calculatedMacros ?? { kcal: 2000, protein: 150, carbs: 200, fat: 65 };
 
   if (isLoading || profileLoading) {
-    return (
-      <AppShell header={<PageHeader title="Nutrition" subtitle="Chargement..." />}>
-        <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <div className="h-4 w-48 skeleton" />
-          <div className="h-3 w-32 skeleton" />
-        </div>
-      </AppShell>
-    );
+    return <PageLoading title="Nutrition" />;
   }
 
   return (
     <AppShell header={<PageHeader title="Nutrition" subtitle={`${totals.kcal} / ${macros.kcal} kcal aujourd'hui`} />}>
-      <div className="mb-4 flex gap-1 rounded-full bg-surface-1 p-1">
-        {tabs.map((t) => (
-          <button key={t} onClick={() => setTab(t)}
-            className="flex-1 rounded-full px-3 py-2 text-sm font-medium transition"
-            style={{ background: tab === t ? "var(--accent)" : "transparent", color: tab === t ? "var(--accent-foreground)" : "var(--muted-foreground)" }}>
-            {t}
-          </button>
-        ))}
-      </div>
+      <SegmentTabs tabs={tabs} value={tab} onChange={setTab} className="mb-4" />
 
       {tab === "Journal" && (
         <JournalView totals={totals} macros={macros} groupedByMeal={groupedByMeal} mealTotals={mealTotals}

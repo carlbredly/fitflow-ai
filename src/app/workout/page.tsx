@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Play, Check, Clock, Dumbbell, Pause, ChevronLeft, ChevronRight, X, Sparkles, Loader2 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app/AppShell";
+import { PageLoading } from "@/components/app/PageLoading";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/lib/supabase";
@@ -49,7 +50,7 @@ export default function WorkoutPage() {
     setLoading(true);
     (async () => {
       try {
-        const { data } = await supabase.from("workout_sessions").select("*").eq("user_id", userId).eq("session_date", today).single();
+        const { data } = await supabase.from("workout_sessions").select("*").eq("user_id", userId).eq("session_date", today).maybeSingle();
         const s = data as Record<string, unknown> | null;
         if (s) {
           const exs = (s.exercises as Array<{ name: string; sets: number; reps: string; rest: number; done?: boolean }>) ?? [];
@@ -87,11 +88,11 @@ export default function WorkoutPage() {
   const doneCount = Object.values(done).filter(Boolean).length;
 
   if (!user) {
-    return (<AppShell header={<PageHeader title="Workout" subtitle="Connecte-toi" />}><div className="flex flex-col items-center justify-center py-20 gap-3"><Sparkles className="h-8 w-8 text-muted-foreground" /><p className="text-sm text-muted-foreground">Connecte-toi pour ton programme</p></div></AppShell>);
+    return <PageLoading title="Entraînement" />;
   }
 
   return (
-    <AppShell header={<PageHeader title="Workout" subtitle={`${workout.name} · ${workout.duration} min`} />}>
+    <AppShell header={<PageHeader title="Entraînement" subtitle={`${workout.name} · ${workout.duration} min`} />}>
       {loading && (
         <div className="mb-3 rounded-xl px-3 py-2 text-xs font-medium animate-pulse" style={{ background: "color-mix(in oklab, var(--accent) 12%, transparent)", color: "var(--accent)" }}>
           <Loader2 className="inline h-3 w-3 mr-1 animate-spin" />Chargement de ta séance...
@@ -149,8 +150,23 @@ export default function WorkoutPage() {
 
 function ActiveWorkout({ exercises, onClose }: { exercises: Exercise[]; onClose: () => void }) {
   const [idx, setIdx] = useState(0);
-  const [seconds, setSeconds] = useState(90);
+  const [seconds, setSeconds] = useState(exercises[0]?.rest ?? 90);
+  const [running, setRunning] = useState(true);
   const ex = exercises[idx] ?? exercises[0];
+
+  useEffect(() => {
+    setSeconds(ex.rest);
+    setRunning(true);
+  }, [idx, ex.rest]);
+
+  useEffect(() => {
+    if (!running) return;
+    const id = window.setInterval(() => {
+      setSeconds((s) => Math.max(0, s - 1));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [running]);
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background animate-slide-up">
       <header className="flex items-center justify-between p-4">
@@ -167,9 +183,12 @@ function ActiveWorkout({ exercises, onClose }: { exercises: Exercise[]; onClose:
       </div>
       <div className="space-y-3 p-4 safe-bottom">
         <button className="w-full rounded-xl py-3.5 text-sm font-semibold grad-accent text-background">Valider la série</button>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           <button onClick={() => setIdx(Math.max(0, idx - 1))} className="flex items-center justify-center gap-1 rounded-xl bg-surface-1 py-3 text-xs font-medium text-muted-foreground"><ChevronLeft className="h-4 w-4" /> Préc.</button>
-          <button onClick={() => setSeconds((s) => Math.max(0, s - 10))} className="flex items-center justify-center gap-1 rounded-xl bg-surface-1 py-3 text-xs font-medium"><Pause className="h-4 w-4" /> -10s</button>
+          <button onClick={() => setRunning((r) => !r)} className="flex items-center justify-center gap-1 rounded-xl bg-surface-1 py-3 text-xs font-medium">
+            <Pause className="h-4 w-4" /> {running ? "Pause" : "Reprendre"}
+          </button>
+          <button onClick={() => setSeconds((s) => Math.max(0, s - 10))} className="flex items-center justify-center gap-1 rounded-xl bg-surface-1 py-3 text-xs font-medium">-10s</button>
           <button onClick={() => setIdx(Math.min(exercises.length - 1, idx + 1))} className="flex items-center justify-center gap-1 rounded-xl bg-surface-1 py-3 text-xs font-medium text-muted-foreground">Suivant <ChevronRight className="h-4 w-4" /></button>
         </div>
       </div>

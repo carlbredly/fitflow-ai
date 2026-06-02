@@ -31,3 +31,7 @@ dist-ssr
 *.sln
 *.sw?
 .env.local
+
+# Next.js
+.next/
+tsconfig.tsbuildinfo

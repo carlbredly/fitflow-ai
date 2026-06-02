@@ -1,5 +1,6 @@
 import { calculateAll } from "@/lib/calculations";
 import { supabase } from "@/lib/supabase";
+import { generateLocalWorkoutPlan, sanitizeAiSessions } from "@/lib/workout-plan";
 import { useAuthStore } from "@/stores/auth.store";
 
 export interface OnboardingData {
@@ -16,12 +17,18 @@ export interface GeneratedPlan {
 
 export function generateLocalFallback(data: OnboardingData): GeneratedPlan {
   const macros = calculateAll(data.weight || 75, data.height || 175, data.age || 30, data.sex, data.goal, data.mode);
+  const sessions = generateLocalWorkoutPlan({
+    goal: data.goal,
+    mode: data.mode,
+    weeks: data.weeks,
+    equipment: data.equipment.length ? data.equipment : ["home"],
+  });
   return {
     macros,
-    coachSummary: "Plan calculé localement (IA indisponible). Ajuste selon tes besoins.",
+    coachSummary: "Programme sportif généré selon ton profil et ton équipement.",
     weeklyChange: data.goal === "gain" ? 0.5 : data.goal === "loss" ? -0.4 : 0,
-    sessionsPerWeek: data.mode === "extreme" ? 5 : data.mode === "strict" ? 4 : 3,
-    sessions: [],
+    sessionsPerWeek: sessions.length,
+    sessions,
   };
 }
 
@@ -48,7 +55,20 @@ export async function generatePlan(data: OnboardingData, signal?: AbortSignal): 
   }
 
   const json = await res.json() as { success: boolean; data?: GeneratedPlan };
-  return json.data!;
+  const plan = json.data;
+  if (!plan) throw new Error("Réponse plan invalide");
+
+  const fallbackInput = {
+    goal: data.goal,
+    mode: data.mode,
+    weeks: data.weeks,
+    equipment: data.equipment.length ? data.equipment : ["home"],
+  };
+
+  plan.sessions = sanitizeAiSessions(plan.sessions, fallbackInput);
+  plan.sessionsPerWeek = plan.sessions.length;
+
+  return plan;
 }
 
 export async function askCoach(

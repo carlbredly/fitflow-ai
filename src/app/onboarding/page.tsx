@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { generatePlan, generateLocalFallback } from "@/lib/ai-service";
+import { scheduleWorkoutSessions } from "@/lib/workout-plan";
 import { useAuth } from "@/hooks/useAuth";
 import type { OnboardingData, GeneratedPlan } from "@/lib/ai-service";
 
@@ -21,6 +22,7 @@ export default function OnboardingPage() {
   const [plan, setPlan] = useState<GeneratedPlan | null>(null);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const [form, setForm] = useState<OnboardingData>({
     name: "", sex: "m", age: 0, weight: 0, height: 0, goalWeight: 0,
@@ -82,34 +84,35 @@ export default function OnboardingPage() {
   const handleFinish = useCallback(async () => {
     if (!userId) { router.push("/"); return; }
     setSaving(true);
+    setSaveError(null);
     try {
       const now = new Date().toISOString();
       const today = now.split("T")[0]!;
-      await supabase.from("profiles").upsert({
+      const { error: profileError } = await supabase.from("profiles").upsert({
         id: userId, name: form.name, sex: form.sex, age: form.age,
         weight_kg: form.weight, height_cm: form.height, goal_weight_kg: form.goalWeight,
         diet_constraints: form.dietConstraints.filter((d) => d !== "Aucune"),
         goal: form.goal, mode: form.mode, deadline_weeks: form.weeks,
-        equipment: form.equipment, program_start_date: today, updated_at: now,
+        equipment: form.equipment.length ? form.equipment : ["home"],
+        program_start_date: today, updated_at: now,
       } as Record<string, unknown>);
-      if (plan?.sessions.length) {
-        const refDate = new Date(); refDate.setHours(0, 0, 0, 0);
-        const sessions = plan.sessions.map((s) => {
-          const d = new Date(refDate);
-          let delta = (s.day_index - refDate.getDay() + 7) % 7;
-          if (delta === 0) delta = 7;
-          d.setDate(refDate.getDate() + delta);
-          return {
-            user_id: userId, session_date: d.toISOString().split("T")[0],
-            session_name: s.session_name, day_index: s.day_index, exercises: s.exercises,
-            duration_minutes: Math.round(s.exercises.reduce((sum, e) => sum + (e.rest / 60) * e.sets + 0.75 * e.sets, 0)) + 5,
-          };
-        });
-        await supabase.from("workout_sessions").insert(sessions);
-      }
-      router.push("/");
-    } catch (error) { console.error("Save error:", error); }
-    finally { setSaving(false); }
+      if (profileError) throw profileError;
+
+      const sessionsPlan = plan?.sessions?.length
+        ? plan.sessions
+        : generateLocalFallback(form).sessions;
+
+      await supabase.from("workout_sessions").delete().eq("user_id", userId);
+
+      const scheduled = scheduleWorkoutSessions(userId, sessionsPlan, form.weeks, new Date());
+      const { error: workoutError } = await supabase.from("workout_sessions").insert(scheduled);
+      if (workoutError) throw workoutError;
+
+      router.push("/workout");
+    } catch (error) {
+      console.error("Save error:", error);
+      setSaveError("Impossible d'enregistrer ton programme. Réessaie dans un instant.");
+    } finally { setSaving(false); }
   }, [userId, form, plan, router]);
 
   return (
@@ -133,7 +136,7 @@ export default function OnboardingPage() {
         {step === 0 && <Step1 form={form} update={update} />}
         {step === 1 && <Step2 form={form} update={update} />}
         {step === 2 && <Step3 form={form} update={update} />}
-        {step === 3 && <Step4 form={form} plan={plan} genError={genError} onFinish={handleFinish} saving={saving} />}
+        {step === 3 && <Step4 form={form} plan={plan} genError={genError} saveError={saveError} onFinish={handleFinish} saving={saving} />}
       </main>
       {step < 3 && (
         <div className="fixed inset-x-0 bottom-0 z-30 glass border-t border-border safe-bottom">
@@ -226,6 +229,34 @@ const Step2 = memo(function Step2({ form, update }: { form: OnboardingData; upda
           <div className="flex-1"><p className="text-sm font-semibold">{g.title}</p><p className="text-xs text-muted-foreground">{g.sub}</p></div>
         </button>
       ))}
+
+      <div>
+        <p className="mb-2 text-xs font-medium text-muted-foreground">Intensité du programme</p>
+        <div className="grid grid-cols-3 gap-2">
+          {([
+            { id: "normal" as const, label: "Normal", sub: "3 séances/sem" },
+            { id: "strict" as const, label: "Strict", sub: "4 séances/sem" },
+            { id: "extreme" as const, label: "Poussé", sub: "5 séances/sem" },
+          ]).map((m) => (
+            <button key={m.id} type="button" onClick={() => update("mode", m.id)}
+              className="rounded-xl border-2 px-2 py-3 text-center transition"
+              style={{ borderColor: form.mode === m.id ? "var(--accent)" : "var(--border)", background: form.mode === m.id ? "color-mix(in oklab, var(--accent) 12%, transparent)" : "var(--surface-1)" }}>
+              <p className="text-sm font-semibold">{m.label}</p>
+              <p className="mt-0.5 text-[10px] text-muted-foreground">{m.sub}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <label className="block">
+        <div className="mb-2 flex items-center justify-between text-xs font-medium text-muted-foreground">
+          <span>Durée du programme</span>
+          <span className="font-mono text-foreground">{form.weeks} semaines</span>
+        </div>
+        <input type="range" min={4} max={16} step={1} value={form.weeks}
+          onChange={(e) => update("weeks", Number(e.target.value))}
+          className="w-full accent-[var(--accent)]" />
+      </label>
     </div>
   );
 });
@@ -238,8 +269,8 @@ const Step3 = memo(function Step3({ form, update }: { form: OnboardingData; upda
   };
   return (
     <div className="animate-slide-up space-y-4">
-      <h1 className="text-3xl font-bold leading-tight">Ton programme</h1>
-      <p className="text-sm text-muted-foreground">Choisis ton équipement</p>
+      <h1 className="text-3xl font-bold leading-tight">Ton équipement</h1>
+      <p className="text-sm text-muted-foreground">Où t'entraînes-tu et avec quoi ?</p>
       <div className="grid grid-cols-2 gap-3">
         {items.map((item) => {
           const on = form.equipment.includes(item.id);
@@ -256,14 +287,23 @@ const Step3 = memo(function Step3({ form, update }: { form: OnboardingData; upda
   );
 });
 
-function Step4({ form, plan, genError, onFinish, saving }: {
-  form: OnboardingData; plan: GeneratedPlan | null; genError: string | null; onFinish: () => void; saving: boolean;
+const DAY_LABELS = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
+
+function Step4({ form, plan, genError, saveError, onFinish, saving }: {
+  form: OnboardingData; plan: GeneratedPlan | null; genError: string | null; saveError: string | null; onFinish: () => void; saving: boolean;
 }) {
   if (!plan) return null;
+  const sessions = plan.sessions ?? [];
+
   return (
-    <div className="animate-slide-up text-center space-y-4">
-      <h1 className="text-3xl font-bold">Ton plan est prêt, {form.name || "Sportif"} 🎯</h1>
-      {genError && <p className="text-sm" style={{ color: "var(--warning)" }}><AlertTriangle className="inline h-3 w-3 mr-1" />{genError}</p>}
+    <div className="animate-slide-up space-y-4">
+      <div className="text-center">
+        <h1 className="text-3xl font-bold">Ton plan est prêt, {form.name || "Sportif"} 🎯</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{plan.coachSummary}</p>
+      </div>
+      {genError && <p className="text-sm text-center" style={{ color: "var(--warning)" }}><AlertTriangle className="inline h-3 w-3 mr-1" />{genError}</p>}
+      {saveError && <p className="text-sm text-center text-destructive">{saveError}</p>}
+
       <div className="flex gap-3 overflow-x-auto -mx-4 px-4 no-scrollbar">
         {[
           { label: "Calories", value: plan.macros.kcal.toLocaleString(), unit: "kcal", color: "var(--accent)" },
@@ -271,17 +311,44 @@ function Step4({ form, plan, genError, onFinish, saving }: {
           { label: "Glucides", value: String(plan.macros.carbs), unit: "g", color: "var(--orange)" },
           { label: "Lipides", value: String(plan.macros.fat), unit: "g", color: "var(--warning)" },
         ].map((m) => (
-          <div key={m.label} className="w-36 shrink-0 rounded-2xl border border-border bg-surface-1 p-4">
+          <div key={m.label} className="w-36 shrink-0 rounded-2xl border border-border bg-surface-1 p-4 text-center">
             <p className="text-xs text-muted-foreground">{m.label}</p>
             <p className="mt-1 font-mono text-2xl font-bold" style={{ color: m.color }}>{m.value}</p>
             <p className="text-xs text-muted-foreground">{m.unit}</p>
           </div>
         ))}
       </div>
+
+      <section className="rounded-2xl border border-border bg-surface-1 p-4 text-left">
+        <h2 className="text-sm font-semibold flex items-center gap-2">
+          <Dumbbell className="h-4 w-4" style={{ color: "var(--accent)" }} />
+          Programme sportif · {sessions.length} séances / semaine
+        </h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Planifié sur {form.weeks} semaines selon ton équipement ({form.equipment.join(", ") || "maison"}).
+        </p>
+        <ul className="mt-3 space-y-2">
+          {sessions.map((s, i) => (
+            <li key={`${s.session_name}-${i}`} className="rounded-xl bg-surface-2 px-3 py-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">{s.session_name}</p>
+                <span className="shrink-0 text-[10px] font-mono text-muted-foreground">
+                  {DAY_LABELS[s.day_index % 7] ?? "—"}
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {s.exercises.length} exercices · {s.exercises.slice(0, 2).map((e) => e.name).join(" · ")}
+                {s.exercises.length > 2 ? "…" : ""}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <button type="button" onClick={onFinish} disabled={saving}
         className="w-full rounded-xl py-4 text-base font-semibold grad-accent text-background disabled:opacity-50">
         {saving ? <Loader2 className="h-5 w-5 animate-spin inline" /> : <Check className="h-5 w-5 inline" />}
-        {saving ? " Sauvegarde..." : " C'est parti !"}
+        {saving ? " Enregistrement du programme…" : " Enregistrer et voir ma séance"}
       </button>
     </div>
   );

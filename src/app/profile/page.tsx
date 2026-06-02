@@ -5,20 +5,12 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Bell, Shield, HelpCircle, LogOut, ChevronRight, Sparkles, Edit3, Check, X, MessageCircle } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app/AppShell";
+import { PageLoading } from "@/components/app/PageLoading";
+import { BadgesGrid } from "@/components/app/BadgesGrid";
+import { NotificationSettings } from "@/components/app/NotificationSettings";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
-
-const LS_DAILY = "fitai-notif-daily";
-const LS_WORKOUT = "fitai-notif-workout";
-
-function getLS(key: string, fallback: boolean): boolean {
-  try { const v = localStorage.getItem(key); return v !== null ? v === "true" : fallback; }
-  catch { return fallback; }
-}
-
-function setLS(key: string, val: boolean): void {
-  try { localStorage.setItem(key, String(val)); } catch { /* ok */ }
-}
+import { useGamification } from "@/hooks/useGamification";
 
 export default function ProfilePage() {
   const { user, signOut } = useAuth();
@@ -29,15 +21,11 @@ export default function ProfilePage() {
   const [newName, setNewName] = useState("");
   const [nameError, setNameError] = useState("");
   const [showNotif, setShowNotif] = useState(false);
-  const [dailyNotif, setDailyNotif] = useState(() => getLS(LS_DAILY, true));
-  const [workoutNotif, setWorkoutNotif] = useState(() => getLS(LS_WORKOUT, true));
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showSupport, setShowSupport] = useState(false);
 
-  const toggleDaily = () => { const v = !dailyNotif; setDailyNotif(v); setLS(LS_DAILY, v); };
-  const toggleWorkout = () => { const v = !workoutNotif; setWorkoutNotif(v); setLS(LS_WORKOUT, v); };
-
   const macros = calculatedMacros ?? { kcal: 0, protein: 0, carbs: 0, fat: 0 };
+  const { allBadges, foodStreak, adherenceScore } = useGamification(userId, macros.kcal, macros.protein);
   const modeLabel = dbProfile?.mode === "strict" ? "Strict" : dbProfile?.mode === "extreme" ? "Poussé" : "Normal";
 
   const handleLogout = async () => {
@@ -61,14 +49,7 @@ export default function ProfilePage() {
   };
 
   if (isLoading || !dbProfile) {
-    return (
-      <AppShell header={<PageHeader title="Profil" />}>
-        <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <div className="h-16 w-16 rounded-full skeleton" />
-          <div className="h-4 w-32 skeleton" />
-        </div>
-      </AppShell>
-    );
+    return <PageLoading title="Profil" />;
   }
 
   return (
@@ -104,7 +85,7 @@ export default function ProfilePage() {
           </>
         )}
 
-        <div className="mt-5 grid grid-cols-3 gap-2 text-center">
+        <div className="mt-5 grid grid-cols-2 gap-2 text-center max-w-xs mx-auto">
           <div className="rounded-xl bg-surface-2 p-2.5">
             <p className="font-mono text-base font-bold">{dbProfile.weight_kg ?? "?"}</p>
             <p className="text-[10px] text-muted-foreground">kg actuel</p>
@@ -114,8 +95,12 @@ export default function ProfilePage() {
             <p className="text-[10px] text-muted-foreground">kg objectif</p>
           </div>
           <div className="rounded-xl bg-surface-2 p-2.5">
-            <p className="font-mono text-base font-bold" style={{ color: "var(--orange)" }}>🔥 {streak}</p>
-            <p className="text-[10px] text-muted-foreground">streak</p>
+            <p className="font-mono text-base font-bold" style={{ color: "var(--orange)" }}>🔥 {foodStreak || streak}</p>
+            <p className="text-[10px] text-muted-foreground">streak repas</p>
+          </div>
+          <div className="rounded-xl bg-surface-2 p-2.5">
+            <p className="text-[10px] text-muted-foreground">Adhérence</p>
+            <p className="font-mono text-base font-bold" style={{ color: "var(--accent)" }}>{adherenceScore}%</p>
           </div>
         </div>
       </section>
@@ -125,6 +110,10 @@ export default function ProfilePage() {
         <div className="flex-1"><p className="text-sm font-semibold">Refaire l'onboarding</p><p className="text-xs text-muted-foreground">Recalcule ton plan et tes macros</p></div>
         <ChevronRight className="h-4 w-4 text-muted-foreground" />
       </Link>
+
+      <div className="mt-4">
+        <BadgesGrid badges={allBadges} />
+      </div>
 
       <section className="mt-4 rounded-2xl border border-border bg-surface-1 p-4">
         <h3 className="text-sm font-semibold">Mes cibles quotidiennes</h3>
@@ -165,20 +154,7 @@ export default function ProfilePage() {
               <h3 className="text-lg font-semibold">Notifications</h3>
               <button onClick={() => setShowNotif(false)} className="grid h-8 w-8 place-items-center rounded-full bg-surface-2"><X className="h-4 w-4" /></button>
             </div>
-            <div className="flex items-center justify-between py-3">
-              <div><p className="text-sm font-medium">Rappels quotidiens</p><p className="text-xs text-muted-foreground">Rappel pour enregistrer tes repas</p></div>
-              <button onClick={toggleDaily} className="grid h-7 w-12 place-items-center rounded-full transition"
-                style={{ background: dailyNotif ? "var(--accent)" : "var(--surface-3)" }}>
-                <span className="h-5 w-5 rounded-full bg-white shadow transition-transform" style={{ transform: dailyNotif ? "translateX(10px)" : "translateX(-10px)" }} />
-              </button>
-            </div>
-            <div className="flex items-center justify-between py-3">
-              <div><p className="text-sm font-medium">Rappel de séance</p><p className="text-xs text-muted-foreground">Notification avant ta séance du jour</p></div>
-              <button onClick={toggleWorkout} className="grid h-7 w-12 place-items-center rounded-full transition"
-                style={{ background: workoutNotif ? "var(--accent)" : "var(--surface-3)" }}>
-                <span className="h-5 w-5 rounded-full bg-white shadow transition-transform" style={{ transform: workoutNotif ? "translateX(10px)" : "translateX(-10px)" }} />
-              </button>
-            </div>
+            <NotificationSettings />
           </div>
         </div>
       )}
