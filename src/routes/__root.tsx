@@ -103,50 +103,47 @@ function RootComponent() {
   useEffect(() => { pathRef.current = location.pathname; }, [location.pathname]);
 
   useEffect(() => {
-    let cancelled = false;
+    let handled = false;
 
     async function handle(s: Session | null) {
-      if (cancelled) return;
-      cancelled = true;
+      if (handled) return;
+      handled = true;
+
       const path = pathRef.current;
       const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + "/"));
 
-      if (!s && !isPublic) { navigate({ to: "/login", replace: true }); setChecking(false); return; }
-      if (s) {
-        if (path === "/login") { navigate({ to: "/", replace: true }); setChecking(false); return; }
-        if (path === "/" || path === "/onboarding") {
-          try {
+      try {
+        if (!s && !isPublic) { navigate({ to: "/login", replace: true }); return; }
+        if (s) {
+          if (path === "/login") { navigate({ to: "/", replace: true }); return; }
+          if (path === "/" || path === "/onboarding") {
             const { data: p } = await supabase.from("profiles").select("goal").eq("id", s.user.id).single();
-            if (p?.goal) {
-              if (path === "/onboarding") navigate({ to: "/", replace: true });
-            } else {
-              if (path === "/") navigate({ to: "/onboarding", replace: true });
-            }
-          } catch { /* ok */ }
+            if (p?.goal && path === "/onboarding") navigate({ to: "/", replace: true });
+            else if (!p?.goal && path === "/") navigate({ to: "/onboarding", replace: true });
+          }
         }
+      } catch { /* ok */ } finally {
+        setChecking(false);
       }
-      setChecking(false);
     }
 
-    // onAuthStateChange détecte le SIGNED_IN dès que le hash est traité
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (session && ["SIGNED_IN", "INITIAL_SESSION"].includes(event)) handle(session);
     });
 
-    // fallback polling (cas où onAuthStateChange part pas)
     let attempts = 0;
     const poll = async () => {
-      if (cancelled) return;
+      if (handled) return;
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) { handle(session); return; }
-      } catch { /* SDK pas encore prêt */ }
-      if (++attempts >= 20) { handle(null); return; }
+      } catch { /* ok */ }
+      if (++attempts >= 3) { handle(null); return; }
       setTimeout(poll, 400);
     };
     poll();
 
-    return () => { cancelled = true; sub.subscription.unsubscribe(); };
+    return () => { handled = true; sub.subscription.unsubscribe(); };
   }, [navigate]);
 
   if (checking) {

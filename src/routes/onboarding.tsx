@@ -54,12 +54,12 @@ function Onboarding() {
         const msg = err instanceof Error ? err.message : "Erreur inconnue";
         if (msg === "Génération annulée") {
           setGenError("Génération annulée");
-          return;
+        } else {
+          const fallback = generateLocalFallback(form);
+          setPlan(fallback);
+          setGenError("Plan calculé localement (l'IA était indisponible)");
+          setStep(3);
         }
-        const fallback = generateLocalFallback(form);
-        setPlan(fallback);
-        setGenError("Plan calculé localement (l'IA était indisponible)");
-        setStep(3);
       } finally {
         setGenerating(false);
         abortRef.current = null;

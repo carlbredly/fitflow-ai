@@ -1,5 +1,7 @@
 import { chatWithCoach, generateWorkoutPlan } from "@/lib/deepseek";
 import { calculateAll } from "@/lib/calculations";
+import { supabase } from "@/lib/supabase";
+import { useAuthStore } from "@/stores/auth.store";
 
 export interface OnboardingData {
   name: string;
@@ -53,20 +55,6 @@ export async function generatePlan(
   data: OnboardingData,
   signal?: AbortSignal,
 ): Promise<GeneratedPlan> {
-  // Quick health check: si l'API répond avec HTML ou pas du tout → fallback local immédiat
-  const healthCheckSignal = new AbortController();
-  const healthTimeout = setTimeout(() => healthCheckSignal.abort(), 3000);
-  try {
-    const hc = await fetch("/api/health", { signal: healthCheckSignal.signal });
-    const ct = hc.headers.get("content-type") || "";
-    if (ct.includes("text/html") || !hc.ok) throw new Error("no api");
-  } catch {
-    clearTimeout(healthTimeout);
-    throw new Error("API non disponible (mode local)");
-  } finally {
-    clearTimeout(healthTimeout);
-  }
-
   const maxRetries = 1;
   const baseDelay = 0;
 
@@ -81,7 +69,8 @@ export async function generatePlan(
         ? combineAbortSignals(signal, controller.signal)
         : controller.signal;
 
-      const token = (await import("@/stores/auth.store")).useAuthStore.getState().token;
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? useAuthStore.getState().token ?? "";
 
       const res = await fetch("/api/ai/generate-plan", {
         method: "POST",
