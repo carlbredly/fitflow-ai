@@ -1,10 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, memo } from "react";
 import {
   ArrowRight, ArrowLeft, Check, Sparkles, Home, Dumbbell, Cable, Weight, Loader2, AlertTriangle,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { generatePlan, generateLocalFallback, checkApiKey } from "@/lib/ai-service";
+import { generatePlan, generateLocalFallback } from "@/lib/ai-service";
 import { useAuth } from "@/hooks/useAuth";
 import type { OnboardingData, GeneratedPlan } from "@/lib/ai-service";
 
@@ -31,6 +31,9 @@ function Onboarding() {
     dietConstraints: [], goal: "gain", mode: "normal", weeks: 4, equipment: [],
   });
 
+  const formRef = useRef(form);
+  formRef.current = form;
+
   const update = useCallback(<K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   }, []);
@@ -38,36 +41,35 @@ function Onboarding() {
   const prev = useCallback(() => setStep((p) => Math.max(0, p - 1)), []);
 
   const next = useCallback(async () => {
-    if (step === 2) {
-      if (generating) return;
-      setGenerating(true);
-      setGenError(null);
+    if (step !== 2) { setStep((p) => Math.min(p + 1, TOTAL - 1)); return; }
+    if (generating) return;
+    setGenerating(true);
+    setGenError(null);
 
-      const controller = new AbortController();
-      abortRef.current = controller;
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-      try {
-        const result = await generatePlan(form, controller.signal);
-        setPlan(result);
+    const currentForm = formRef.current;
+
+    try {
+      const result = await generatePlan(currentForm, controller.signal);
+      setPlan(result);
+      setStep(3);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erreur inconnue";
+      if (msg === "Génération annulée") {
+        setGenError("Génération annulée");
+      } else {
+        const fallback = generateLocalFallback(currentForm);
+        setPlan(fallback);
+        setGenError("Plan calculé localement (l'IA était indisponible)");
         setStep(3);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "Erreur inconnue";
-        if (msg === "Génération annulée") {
-          setGenError("Génération annulée");
-        } else {
-          const fallback = generateLocalFallback(form);
-          setPlan(fallback);
-          setGenError("Plan calculé localement (l'IA était indisponible)");
-          setStep(3);
-        }
-      } finally {
-        setGenerating(false);
-        abortRef.current = null;
       }
-      return;
+    } finally {
+      setGenerating(false);
+      abortRef.current = null;
     }
-    if (step < TOTAL - 1) setStep((p) => p + 1);
-  }, [step, generating, form]);
+  }, [step, generating]);
 
   const cancelGeneration = useCallback(() => {
     abortRef.current?.abort();
@@ -109,8 +111,7 @@ function Onboarding() {
           if (delta === 0) delta = 7;
           sessionDate.setDate(refDate.getDate() + delta);
           return {
-            user_id: userId,
-            session_date: sessionDate.toISOString().split("T")[0],
+            user_id: userId, session_date: sessionDate.toISOString().split("T")[0],
             session_name: s.session_name, day_index: s.day_index,
             exercises: s.exercises,
             duration_minutes: Math.round(s.exercises.reduce((sum, e) => sum + (e.rest / 60) * e.sets + 0.75 * e.sets, 0)) + 5,
@@ -169,11 +170,13 @@ function SimpleInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={`w-full rounded-xl border border-border bg-surface-1 px-4 py-3 text-sm outline-none transition focus:border-accent ${props.className ?? ""}`} />;
 }
 
-function Step1({ form, update }: { form: OnboardingData; update: (k: keyof OnboardingData, v: any) => void }) {
+const Step1 = memo(function Step1({ form, update }: { form: OnboardingData; update: (k: keyof OnboardingData, v: any) => void }) {
   const tags = ["Aucune", "Végétarien", "Vegan", "Sans gluten", "Sans lactose", "Halal", "Allergie noix"];
   const toggle = (tag: string) => {
     if (tag === "Aucune") { update("dietConstraints", ["Aucune"]); return; }
-    const picked = form.dietConstraints.includes(tag) ? form.dietConstraints.filter((x) => x !== tag) : [...form.dietConstraints.filter((d) => d !== "Aucune"), tag];
+    const picked = form.dietConstraints.includes(tag)
+      ? form.dietConstraints.filter((x) => x !== tag)
+      : [...form.dietConstraints.filter((d) => d !== "Aucune"), tag];
     update("dietConstraints", picked.length ? picked : ["Aucune"]);
   };
   return (
@@ -222,9 +225,9 @@ function Step1({ form, update }: { form: OnboardingData; update: (k: keyof Onboa
       </label>
     </div>
   );
-}
+});
 
-function Step2({ form, update }: { form: OnboardingData; update: (k: keyof OnboardingData, v: any) => void }) {
+const Step2 = memo(function Step2({ form, update }: { form: OnboardingData; update: (k: keyof OnboardingData, v: any) => void }) {
   return (
     <div className="animate-slide-up space-y-4">
       <h1 className="text-3xl font-bold leading-tight">Ton objectif</h1>
@@ -245,9 +248,9 @@ function Step2({ form, update }: { form: OnboardingData; update: (k: keyof Onboa
       })}
     </div>
   );
-}
+});
 
-function Step3({ form, update }: { form: OnboardingData; update: (k: keyof OnboardingData, v: any) => void }) {
+const Step3 = memo(function Step3({ form, update }: { form: OnboardingData; update: (k: keyof OnboardingData, v: any) => void }) {
   const items = [{ id: "home", Icon: Home, label: "Maison" }, { id: "gym", Icon: Dumbbell, label: "Salle" }, { id: "bands", Icon: Cable, label: "Élastiques" }, { id: "weights", Icon: Weight, label: "Haltères" }];
   const toggle = (id: string) => {
     const picked = form.equipment.includes(id) ? form.equipment.filter((x) => x !== id) : [...form.equipment, id];
@@ -271,14 +274,12 @@ function Step3({ form, update }: { form: OnboardingData; update: (k: keyof Onboa
       </div>
     </div>
   );
-}
+});
 
 function Step4({ form, plan, genError, onFinish, saving }: {
   form: OnboardingData; plan: GeneratedPlan | null; genError: string | null; onFinish: () => void; saving: boolean;
 }) {
   if (!plan) return null;
-  const targetDiff = form.goalWeight - form.weight;
-  const diffLabel = targetDiff >= 0 ? `+${targetDiff.toFixed(1)}` : targetDiff.toFixed(1);
   return (
     <div className="animate-slide-up text-center space-y-4">
       <h1 className="text-3xl font-bold">Ton plan est prêt, {form.name || "Sportif"} 🎯</h1>
