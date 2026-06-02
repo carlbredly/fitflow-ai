@@ -217,13 +217,16 @@ function WeeklyCheckin({ userId, dbProfile, targetKcal }: { userId: string | und
 function SliderRow({ icon: Icon, label, value, onChange, color, invert }: {
   icon: typeof BedDouble; label: string; value: number; onChange: (v: number) => void; color: string; invert?: boolean;
 }) {
+  const barColor = invert
+    ? value <= 3 ? "var(--accent)" : value >= 7 ? "var(--danger)" : color
+    : value >= 7 ? "var(--accent)" : value <= 3 ? "var(--danger)" : color;
   return (
     <div>
       <div className="flex items-center justify-between text-xs">
         <span className="flex items-center gap-1.5 text-muted-foreground"><Icon className="h-3.5 w-3.5" /> {label}</span>
         <span className="font-mono font-semibold">{value}/10</span>
       </div>
-      <input type="range" min={0} max={10} value={value} onChange={(e) => onChange(Number(e.target.value))} className="mt-1 w-full h-2" />
+      <input type="range" min={0} max={10} value={value} onChange={(e) => onChange(Number(e.target.value))} className="mt-1 w-full accent-[color:var(--accent)] h-2" style={{ accentColor: barColor }} />
     </div>
   );
 }

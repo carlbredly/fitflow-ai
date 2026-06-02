@@ -42,7 +42,7 @@ export default function ProfilePage() {
 
   const handleLogout = async () => {
     await signOut();
-    router.push("/login");
+    router.replace("/login");
   };
 
   const startEdit = () => { setNewName(dbProfile?.name ?? ""); setNameError(""); setEditing(true); };
