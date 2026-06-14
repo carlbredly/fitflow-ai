@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Play, Check, Clock, Dumbbell, Pause, ChevronLeft, ChevronRight, X, Sparkles, Loader2 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app/AppShell";
 import { PageLoading } from "@/components/app/PageLoading";
+import { ExerciseGif } from "@/components/app/ExerciseGif";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/lib/supabase";
@@ -132,7 +133,7 @@ export default function WorkoutPage() {
             <li key={ex.id}>
               <button onClick={() => toggleDone(ex.id)}
                 className="flex w-full items-center gap-3 rounded-2xl border border-border bg-surface-1 p-3 text-left transition hover:border-accent/40">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-surface-2 font-mono text-xs text-muted-foreground">{String(i + 1).padStart(2, "0")}</span>
+                <ExerciseGif key={ex.id} name={ex.name} size={48} />
                 <div className="flex-1 min-w-0"><p className="truncate text-sm font-semibold">{ex.name}</p><p className="text-xs text-muted-foreground">{ex.sets} × {ex.reps} reps · repos {ex.rest}s</p></div>
                 <span className="grid h-7 w-7 place-items-center rounded-full border transition" style={{ background: isDone ? "var(--accent)" : "transparent", borderColor: isDone ? "var(--accent)" : "var(--border)" }}>
                   {isDone && <Check className="h-4 w-4 text-background" strokeWidth={3} />}
@@ -177,7 +178,10 @@ function ActiveWorkout({ exercises, onClose }: { exercises: Exercise[]; onClose:
       <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
         <p className="text-xs uppercase tracking-widest text-muted-foreground">Repos</p>
         <p className="mt-3 font-mono text-7xl font-bold tabular" style={{ color: "var(--accent)" }}>{String(Math.floor(seconds / 60)).padStart(1, "0")}:{String(seconds % 60).padStart(2, "0")}</p>
-        <h2 className="mt-10 text-2xl font-bold">{ex.name}</h2>
+        <div className="mt-6">
+          <ExerciseGif key={ex.id} name={ex.name} size={120} />
+        </div>
+        <h2 className="mt-6 text-2xl font-bold">{ex.name}</h2>
         <p className="mt-2 text-sm text-muted-foreground">Série 2/{ex.sets} · {ex.reps} répétitions</p>
         <div className="mt-8 flex gap-1.5">{exercises.map((_, i) => (<span key={i} className="h-1.5 w-6 rounded-full" style={{ background: i <= idx ? "var(--accent)" : "var(--surface-3)" }} />))}</div>
       </div>
